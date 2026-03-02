@@ -4,14 +4,16 @@ class formInput extends StatefulWidget {
   final String text;
   final IconData icon;
   final bool isPassword;
-  //final TextEditingController item;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
 
   const formInput({
     super.key,
     required this.text,
     required this.icon,
     required this.isPassword,
-    //required this.item,
+    required this.controller,
+    required this.validator,
   });
 
   @override
@@ -23,13 +25,15 @@ class _formInput extends State<formInput> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: EdgeInsets.all(0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
             width: 300,
             child: TextFormField(
-              //controller: widget.item,
+              controller: widget.controller,
+              validator: widget.validator,
               decoration: InputDecoration(
                 prefixIcon: Icon(widget.icon, color: Colors.blue),
                 enabledBorder: UnderlineInputBorder(
