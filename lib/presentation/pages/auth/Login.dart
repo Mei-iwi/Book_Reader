@@ -6,8 +6,14 @@ import 'package:book_reader/presentation/pages/auth/ShareWidget/buttonStyle.dart
 import 'package:flutter/material.dart';
 import 'ShareWidget/banner.dart';
 
-class Login extends StatelessWidget {
+class Login extends StatefulWidget {
   const Login({super.key});
+
+  @override
+  State<StatefulWidget> createState() => _Login();
+}
+
+class _Login extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
