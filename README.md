@@ -2,7 +2,7 @@
 
 ## 1 Cây thư mục tổng thể
 
-<!-- ```text
+
 book_reader_flutter/
 ├─ README.md
 ├─ STRUCTURE.md
@@ -75,4 +75,4 @@ book_reader_flutter/
       │  ├─ search/
       │  └─ settings/
       └─ widgets/              # widget riêng theo feature (không dùng chung)
-``` -->
+
