@@ -80,5 +80,6 @@ book_reader_flutter/
 
 ## 2 Cấu trúc thư mực phần cấu hình
 <img width="891" height="548" alt="Screenshot 2026-03-03 234544" src="https://github.com/user-attachments/assets/f1f161fc-a4fc-48c6-a7da-43691df79f64" />
+
 ## 3 Cấu trúc thứ mục trong lib
 <img width="717" height="890" alt="image" src="https://github.com/user-attachments/assets/0a976209-b4d3-482f-a985-cc62b8ddc1cb" />
