@@ -78,7 +78,7 @@ book_reader_flutter/
 
 ```
 
-## 2 Cấu trúc thư mực phần cấu hình
+## 2 Cấu trúc thư mục phần cấu hình
 <img width="891" height="548" alt="Screenshot 2026-03-03 234544" src="https://github.com/user-attachments/assets/f1f161fc-a4fc-48c6-a7da-43691df79f64" />
 
 ## 3 Cấu trúc thứ mục trong lib
