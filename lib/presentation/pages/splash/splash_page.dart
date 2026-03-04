@@ -14,7 +14,7 @@ class _SplashPage extends State<SplashPage> {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoute.login);
+      Navigator.pushReplacementNamed(context, AppRoute.home);
     });
   }
 
