@@ -1,4 +1,5 @@
 import 'package:book_reader/presentation/pages/home/home.dart';
+import 'package:book_reader/presentation/pages/profile/myprofile.dart';
 import 'package:flutter/material.dart';
 
 class Homescreen extends StatefulWidget {
@@ -9,7 +10,12 @@ class Homescreen extends StatefulWidget {
 class _Homescreen extends State<Homescreen> {
   final search = TextEditingController();
   int _index = 0;
-  final List<Widget> _pages = [Home()];
+  final List<Widget> _pages = [
+    Home(),
+    Scaffold(body: Center(child: Text("Đang phát triển "))),
+    Scaffold(body: Center(child: Text("Đang phát triển "))),
+    Myprofile(),
+  ];
 
   final List<BottomNavigationBarItem> _navItems = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
