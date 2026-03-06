@@ -1,4 +1,5 @@
 import 'package:book_reader/config/routes.dart';
+import 'package:book_reader/core/widgets/ShareFunction/readfileAsync.dart';
 import 'package:flutter/material.dart';
 
 class Reader extends StatefulWidget {
@@ -12,7 +13,9 @@ class Reader extends StatefulWidget {
 
 class _Reader extends State<Reader> {
   late int newvalue = widget.value;
-
+  Widget content = readFileWidget(
+    filename: 'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt',
+  );
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,10 +97,12 @@ class _Reader extends State<Reader> {
         padding: EdgeInsets.all(0),
         child: Stack(
           children: [
-            Center(
-              child: Container(
-                padding: EdgeInsets.all(10),
-                child: Text("Dữ liệu sách sẽ được tải lên ở đây"),
+            Padding(
+              padding: const EdgeInsets.only(top: 50),
+              child: SingleChildScrollView(
+                child: Center(
+                  child: Container(padding: EdgeInsets.all(10), child: content),
+                ),
               ),
             ),
             Positioned(
@@ -172,6 +177,7 @@ class _Reader extends State<Reader> {
               bottom: 50,
               right: 20,
               child: InkWell(
+                //Xử lý đọc bảo vệ mắt
                 onTap: () {},
                 child: Container(
                   padding: EdgeInsets.all(10),
