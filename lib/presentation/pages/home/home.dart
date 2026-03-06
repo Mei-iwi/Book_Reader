@@ -1,6 +1,6 @@
 import 'package:book_reader/core/constants/templateImage.dart';
-import 'package:book_reader/presentation/pages/home/ShareWidget/form.dart';
-import 'package:book_reader/presentation/pages/home/ShareWidget/wbook.dart';
+import 'package:book_reader/core/widgets/ShareWidgetHome/form.dart';
+import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
 import 'package:flutter/material.dart';
 
 class Home extends StatefulWidget {

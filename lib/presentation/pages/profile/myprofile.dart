@@ -1,7 +1,7 @@
 import 'package:book_reader/core/constants/templateImage.dart';
-import 'package:book_reader/presentation/pages/profile/ShareWidget/historyreading.dart';
-import 'package:book_reader/presentation/pages/profile/ShareWidget/item.dart';
-import 'package:book_reader/presentation/pages/profile/ShareWidget/wbook.dart';
+import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart';
+import 'package:book_reader/core/widgets/ShareWidgetProfile/item.dart';
+import 'package:book_reader/core/widgets/ShareWidgetProfile/wbook.dart';
 import 'package:flutter/material.dart';
 
 class Myprofile extends StatefulWidget {
