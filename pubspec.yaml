@@ -64,6 +64,7 @@ flutter:
     - assets/l10n/
     - assets/sample_data/
     - assets/sample_data/templateImages/
+    - assets/sample_data/templatecontentbooks/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

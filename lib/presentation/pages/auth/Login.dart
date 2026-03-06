@@ -1,10 +1,10 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/myImages.dart';
 import 'package:book_reader/core/constants/myText.dart';
-import 'package:book_reader/presentation/pages/auth/ShareWidget/SigupOther.dart';
-import 'package:book_reader/presentation/pages/auth/ShareWidget/buttonStyle.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/SigupOther.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
 import 'package:flutter/material.dart';
-import 'ShareWidget/banner.dart';
+import '../../../core/widgets/ShareWidgetAuth/banner.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});

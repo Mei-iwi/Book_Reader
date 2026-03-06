@@ -1,3 +1,5 @@
+import 'package:book_reader/core/widgets/ShareFunction/checkImage.dart';
+import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:flutter/material.dart';
 
 Widget wbook({
@@ -37,11 +39,6 @@ Widget wbook({
       ),
     ),
   );
-}
-
-bool checkSourceImage({required String urlImage}) {
-  final isAsset = urlImage.startsWith('assets/');
-  return isAsset ? true : false;
 }
 
 void showBookSnackBar(
@@ -114,7 +111,14 @@ void showBookSnackBar(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => Reader(value: 10, total: 3636),
+                        ),
+                      );
+                    },
 
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size(120, 40),
