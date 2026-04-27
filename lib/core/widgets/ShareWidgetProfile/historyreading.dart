@@ -73,7 +73,7 @@ Widget percentBook(double percent) {
           color: Colors.blue[100],
           borderRadius: BorderRadius.circular(100),
         ),
-        width: 250,
+        width: 180,
         height: 10,
       ),
       Container(
@@ -81,7 +81,7 @@ Widget percentBook(double percent) {
           color: Colors.grey,
           borderRadius: BorderRadius.circular(100),
         ),
-        width: (percent / 100) * 250,
+        width: (percent / 100) * 180,
         height: 10,
       ),
       Positioned.fill(

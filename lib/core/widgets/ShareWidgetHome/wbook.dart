@@ -33,7 +33,7 @@ Widget wbook({
             fit: BoxFit.cover,
             image: (checkSourceImage(urlImage: url)
                 ? AssetImage(url)
-                : NetworkImage(url)),
+                : NetworkImage(url.replaceFirst('http://', 'https://'))),
           ),
         ),
       ),
@@ -91,15 +91,17 @@ void showBookSnackBar(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    title.length > 10 ? "${title.substring(0, 10)}..." : title,
                     style: TextStyle(
-                      fontSize: 25,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey,
                     ),
                   ),
                   Text(
-                    author,
+                    author.length > 15
+                        ? "${author.substring(0, 15)}..."
+                        : author,
                     style: TextStyle(fontSize: 15, color: Colors.grey),
                   ),
                 ],
