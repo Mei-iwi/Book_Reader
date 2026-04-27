@@ -17,16 +17,14 @@ class HomeBookProvider extends ChangeNotifier {
       isLoading = true;
       errMessage = null;
       notifyListeners();
-      final results = await Future.wait([
-        _bookRepository.searchBooks('harray potter'),
-        _bookRepository.searchBooks('programming'),
-        _bookRepository.searchBooks('novel'),
-      ]);
+      final books = await _bookRepository.searchBooks('harry potter');
 
-      continueBooks = results[0];
-      libraryBooks = results[1];
-      recommendationBooks = results[2];
-    } catch (e) {
+      continueBooks = books.take(5).toList();
+      libraryBooks = books.skip(5).take(5).toList();
+      recommendationBooks = books.skip(10).take(5).toList();
+    } catch (e, stackTrace) {
+      debugPrint('LOAD HOME DATA ERROR: $e');
+      debugPrintStack(stackTrace: stackTrace);
       errMessage = "Không thể tải dữ liệu sách. Vui lòng thử lại sau";
     } finally {
       isLoading = false;
@@ -48,5 +46,9 @@ class HomeBookProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> saveBookOffline(Book book) async {
+    await _bookRepository.saveBookOffline(book);
   }
 }

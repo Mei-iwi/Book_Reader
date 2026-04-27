@@ -126,6 +126,14 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
                     arguments: book.id,
                   );
                 },
+                onDownload: () async {
+                  await context.read<HomeBookProvider>().saveBookOffline(book);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã lưu sách vào thư viện offline'),
+                    ),
+                  );
+                },
               );
             },
           ),

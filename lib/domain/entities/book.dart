@@ -11,6 +11,11 @@ class Book {
   final String webReaderLink;
   final String source;
 
+  final String pdfDownloadLink;
+  final String epudDownloadLink;
+  final String localFilePath;
+  final bool isDownloaded;
+
   const Book({
     required this.id,
     required this.title,
@@ -23,5 +28,10 @@ class Book {
     required this.previewLink,
     required this.webReaderLink,
     required this.source,
+
+    this.pdfDownloadLink = '',
+    this.epudDownloadLink = '',
+    this.localFilePath = '',
+    this.isDownloaded = false,
   });
 }
