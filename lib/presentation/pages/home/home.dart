@@ -1,15 +1,29 @@
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/form.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
+import 'package:book_reader/domain/entities/book.dart';
+import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class Home extends StatefulWidget {
+  const Home({super.key});
+
   @override
   State<StatefulWidget> createState() => _Home();
 }
 
 class _Home extends State<Home> {
   final search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeBookProvider>().loadHomeData();
+    });
+  }
 
   @override
   void dispose() {
@@ -19,13 +33,14 @@ class _Home extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<HomeBookProvider>();
     return Scaffold(
       appBar: AppBar(
         title: formSearch(
           text: 'Search',
           controller: search,
           func: () {
-            debugPrint(search.text.trim());
+            context.read<HomeBookProvider>().searchBooks(search.text);
           },
         ),
         centerTitle: true,
@@ -44,195 +59,79 @@ class _Home extends State<Home> {
       ),
       body: Padding(
         padding: const EdgeInsets.only(left: 10),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Continue...', style: style()),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Builder(
-                  builder: (context) {
-                    return Row(
-                      children: [
-                        //Dữ liệu mẫu cho hiện thị
-                        wbook(
-                          context: context,
-                          url: Templateimage.book1,
-                          title: "HarryPotter",
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                        wbook(
-                          context: context,
-                          url: Templateimage.book2,
-                          title: 'Unknow',
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                        wbook(
-                          context: context,
-                          url: Templateimage.book3,
-                          title: 'Unknow',
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                        wbook(
-                          context: context,
-                          url: Templateimage.book4,
-                          title: 'Unknow',
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                        wbook(
-                          context: context,
-                          url: Templateimage.book5,
-                          title: 'Unknow',
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                        wbook(
-                          context: context,
-                          url: Templateimage.book1,
-                          title: 'Unknow',
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                        wbook(
-                          context: context,
-                          url: Templateimage.book2,
-                          title: 'Unknow',
-                          author: 'Unknow',
-                          func: () {},
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              Text('From Library', style: style()),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    //Dữ liệu mẫu cho hiện thị
-                    wbook(
-                      context: context,
-                      url: Templateimage.book5,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book4,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book2,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book1,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book5,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book3,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book4,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                  ],
-                ),
-              ),
-              Text('Recommendations', style: style()),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    //Dữ liệu mẫu cho hiện thị
-                    wbook(
-                      context: context,
-                      url: Templateimage.book2,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book4,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book1,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book5,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book5,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book3,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                    wbook(
-                      context: context,
-                      url: Templateimage.book4,
-                      title: 'Unknow',
-                      author: 'Unknow',
-                      func: () {},
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: _buildBody(provider),
       ),
     );
   }
+}
+
+Widget _buildBody(HomeBookProvider provider) {
+  if (provider.isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
+  if (provider.errMessage != null) {
+    return Center(child: Text(provider.errMessage!));
+  }
+
+  return SingleChildScrollView(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buiderBookSection(title: 'Continue...', books: provider.continueBooks),
+        _buiderBookSection(title: 'From Library', books: provider.libraryBooks),
+        _buiderBookSection(
+          title: 'Recommendations',
+          books: provider.recommendationBooks,
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buiderBookSection({required String title, required List<Book> books}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: style()),
+      const SizedBox(height: 8),
+
+      if (books.isEmpty)
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('Chưa có dữ liệu'),
+        )
+      else
+        SizedBox(
+          height: 230,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: books.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final book = books[index];
+              return wbook(
+                context: context,
+                url: book.thumbnailUrl.isNotEmpty
+                    ? book.thumbnailUrl
+                    : Templateimage.book1,
+                title: book.title,
+                author: book.authors.isNotEmpty
+                    ? book.authors.join(', ')
+                    : "Unknow",
+                func: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/book-detail',
+                    arguments: book.id,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+    ],
+  );
 }
 
 TextStyle style() {

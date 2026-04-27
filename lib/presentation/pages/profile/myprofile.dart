@@ -16,7 +16,7 @@ class _Myprofile extends State<Myprofile> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.only(top: 20),
+        padding: const EdgeInsets.only(top: 50),
         child: Container(
           padding: EdgeInsets.all(10),
           child: SingleChildScrollView(
@@ -183,7 +183,7 @@ class _Myprofile extends State<Myprofile> {
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     vertical: 10,
-                    horizontal: 20,
+                    horizontal: 10,
                   ),
                   child: Column(
                     children: [
