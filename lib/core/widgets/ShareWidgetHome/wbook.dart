@@ -8,11 +8,18 @@ Widget wbook({
   required String title,
   required author,
   required VoidCallback func,
+  required VoidCallback onDownload,
 }) {
   return InkWell(
     onTap: () {
       func;
-      showBookSnackBar(context, title: title, author: author, url: url);
+      showBookSnackBar(
+        context,
+        title: title,
+        author: author,
+        url: url,
+        onDownload: onDownload,
+      );
     },
     child: Padding(
       padding: const EdgeInsets.all(8.0),
@@ -46,6 +53,7 @@ void showBookSnackBar(
   required String title,
   required author,
   required url,
+  VoidCallback? onDownload,
 }) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -137,7 +145,7 @@ void showBookSnackBar(
                   ),
                   SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: onDownload,
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size(120, 40),
                       backgroundColor: Colors.white,

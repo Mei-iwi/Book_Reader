@@ -3,6 +3,8 @@ import 'package:book_reader/presentation/pages/profile/myprofile.dart';
 import 'package:flutter/material.dart';
 
 class Homescreen extends StatefulWidget {
+  const Homescreen({super.key});
+
   @override
   State<StatefulWidget> createState() => _Homescreen();
 }
