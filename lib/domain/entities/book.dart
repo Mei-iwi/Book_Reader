@@ -1,0 +1,27 @@
+class Book {
+  final String id;
+  final String title;
+  final List<String> authors;
+  final String description;
+  final String thumbnailUrl;
+  final List<String> categories;
+  final int pageCount;
+  final String language;
+  final String previewLink;
+  final String webReaderLink;
+  final String source;
+
+  const Book({
+    required this.id,
+    required this.title,
+    required this.authors,
+    required this.description,
+    required this.thumbnailUrl,
+    required this.categories,
+    required this.pageCount,
+    required this.language,
+    required this.previewLink,
+    required this.webReaderLink,
+    required this.source,
+  });
+}
