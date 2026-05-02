@@ -2,6 +2,7 @@ import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/item.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/wbook.dart';
+import 'package:book_reader/presentation/pages/home/home.dart';
 import 'package:flutter/material.dart';
 
 class Myprofile extends StatefulWidget {
@@ -15,8 +16,20 @@ class _Myprofile extends State<Myprofile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () {
+            Navigator.restorablePushNamed(context, "/homescreen");
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+        title: Text(
+          "Profile",
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.only(top: 50),
+        padding: const EdgeInsets.only(top: 10),
         child: Container(
           padding: EdgeInsets.all(10),
           child: SingleChildScrollView(

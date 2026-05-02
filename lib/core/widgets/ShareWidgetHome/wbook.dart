@@ -125,7 +125,13 @@ void showBookSnackBar(
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => Reader(value: 10, total: 3636),
+                          builder: (context) => Reader(
+                            value: 1,
+                            total: 3636,
+                            title: title,
+                            assetPath:
+                                'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt',
+                          ),
                         ),
                       );
                     },
