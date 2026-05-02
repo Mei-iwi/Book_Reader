@@ -27,8 +27,8 @@ class BookRepositoryImpl implements BookRepository {
   }
 
   @override
-  Future<void> deleteOfflineBooks(String bookId) {
-    return _offlineBookDao.deleteOfflineBook(bookId);
+  Future<void> deleteOfflineBooks(Book book) {
+    return _offlineBookDao.deleteOfflineBook(book.id);
   }
 
   @override
@@ -38,43 +38,51 @@ class BookRepositoryImpl implements BookRepository {
 
   @override
   Future<void> saveBookOffline(Book book) async {
-    final bookModel = BookModel(
-      id: book.id,
-      title: book.title,
-      authors: book.authors,
-      description: book.description,
-      thumbnailUrl: book.thumbnailUrl,
-      categories: book.categories,
-      pageCount: book.pageCount,
-      language: book.language,
-      previewLink: book.previewLink,
-      webReaderLink: book.webReaderLink,
-      source: book.source,
-      pdfDownloadLink: book.pdfDownloadLink,
-      epudDownloadLink: book.epudDownloadLink,
-      localFilePath: book.localFilePath,
-      isDownloaded: true,
+    String localFilePath = '';
+
+    final hasEpub = book.epubDownloadLink.trim().isNotEmpty;
+    final hasPdf = book.pdfDownloadLink.trim().isNotEmpty;
+
+    if (hasEpub) {
+      localFilePath = await _bookFileDownloader.downloadBookFile(
+        bookId: book.id,
+        downloadUrl: book.epubDownloadLink,
+        extension: 'epub',
+      );
+    } else if (hasPdf) {
+      localFilePath = await _bookFileDownloader.downloadBookFile(
+        bookId: book.id,
+        downloadUrl: book.pdfDownloadLink,
+        extension: 'pdf',
+      );
+    }
+
+    final bookModel = BookModel.fromEntity(
+      book,
+      localFilePath: localFilePath,
+      isDownloaded: localFilePath.isNotEmpty,
     );
+
     await _offlineBookDao.insertOrUpdateBook(bookModel);
   }
 
   @override
   Future<void> downloadBook(Book book) async {
-    final hasEpub = book.epudDownloadLink.isNotEmpty;
+    final hasEpub = book.epubDownloadLink.isNotEmpty;
     final hasPdf = book.pdfDownloadLink.isNotEmpty;
 
     if (!hasEpub && !hasPdf) {
       await saveBookMetadataOffline(book);
       return;
     }
-    final downloadUrl = hasEpub ? book.epudDownloadLink : book.pdfDownloadLink;
+    final downloadUrl = hasEpub ? book.epubDownloadLink : book.pdfDownloadLink;
 
     final extention = hasEpub ? 'epub' : 'pdf';
 
     final localPath = await _bookFileDownloader.downloadBookFile(
       bookId: book.id,
       downloadUrl: downloadUrl,
-      extention: extention,
+      extension: extention,
     );
     final downloadedbook = BookModel.fromEntity(
       book,

@@ -20,10 +20,10 @@ class LibraryProvider extends ChangeNotifier {
       offlineBooks = await _bookRepository.getOfflineBooks();
 
       debugPrint('===== LIBRARY PROVIDER =====');
-      debugPrint('Số sách đã lưu: ${offlineBooks.length}');
+      debugPrint('Số sách offline nhận được: ${offlineBooks.length}');
 
       for (final book in offlineBooks) {
-        debugPrint('Book offline: ${book.title}');
+        debugPrint('Library book: ${book.title}');
       }
     } catch (e, stackTrace) {
       debugPrint('LOAD OFFLINE BOOKS ERROR: $e');
@@ -32,25 +32,6 @@ class LibraryProvider extends ChangeNotifier {
       errMessage = 'Không thể tải thư viện offline: $e';
     } finally {
       isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteOfflineBook(Book book) async {
-    try {
-      await _bookRepository.deleteOfflineBooks(book);
-
-      offlineBooks.removeWhere((item) => item.id == book.id);
-
-      notifyListeners();
-
-      debugPrint('===== LIBRARY DELETE SUCCESS =====');
-      debugPrint('Deleted book: ${book.title}');
-    } catch (e, stackTrace) {
-      debugPrint('DELETE OFFLINE BOOK ERROR: $e');
-      debugPrintStack(stackTrace: stackTrace);
-
-      errMessage = 'Không thể xóa sách: $e';
       notifyListeners();
     }
   }

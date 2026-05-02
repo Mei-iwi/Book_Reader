@@ -7,20 +7,20 @@ class BookFileDownloader {
 
   BookFileDownloader({Dio? dio}) : _dio = dio ?? Dio();
 
-  Future<String?> downloadBookFile({
+  Future<String> downloadBookFile({
     required String bookId,
     required String downloadUrl,
-    required String extention,
+    required String extension,
   }) async {
-    if (downloadUrl.trim().isEmpty) return null;
+    if (downloadUrl.trim().isEmpty) return '';
 
-    final directory = await getApplicationCacheDirectory();
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = join(directory.path, 'books', '$bookId.$extension');
 
-    final fileName = '$bookId.$extention';
-
-    final filePath = join(directory.path, fileName);
-
-    await _dio.download(downloadUrl, filePath);
+    await _dio.download(
+      downloadUrl.replaceFirst('http://', 'https://'),
+      filePath,
+    );
 
     return filePath;
   }
