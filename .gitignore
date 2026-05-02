@@ -52,3 +52,7 @@ app.*.map.json
 
 # Local app config with API keys
 lib/config/env.dart
+.dart_tool/
+build/
+.env
+*.env
