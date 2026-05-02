@@ -14,8 +14,9 @@ class GoogleBooksApi {
   Future<List<BookModel>> searchBooks({
     required String keyword,
     int startIndex = 0,
-    int maxResult = 20,
+    int maxResult = 10,
     String? langRestrict,
+    bool onlyFreeEbooks = false,
   }) async {
     final data = await _apiClient.get(
       ApiConstants.googleBooksBaseUrl,
@@ -23,9 +24,17 @@ class GoogleBooksApi {
       queryParameters: {
         'q': keyword,
         'startIndex': startIndex.toString(),
-        'maxResult': maxResult.toString(),
-        'projection': 'lite',
-        if (langRestrict != null) 'langeRestrict': langRestrict,
+        'maxResults': maxResult.toString(),
+        'projection': 'full',
+        'key': Env.googleBooksApiKey,
+
+        if (langRestrict != null) 'langRestrict': langRestrict,
+
+        // Ưu tiên sách có full text miễn phí
+        if (onlyFreeEbooks) 'filter': 'free-ebooks',
+
+        // Nếu chỉ muốn sách có EPUB
+        // 'download': 'epub',
       },
     );
 

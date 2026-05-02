@@ -16,49 +16,48 @@ class BookModel extends Book {
     required super.source,
 
     super.pdfDownloadLink,
-    super.epudDownloadLink,
+    super.epubDownloadLink,
     super.localFilePath,
     super.isDownloaded,
+    super.coverLocalPath,
   });
 
   factory BookModel.fromGoogleBooksJson(Map<String, dynamic> json) {
     final volumeInfo = json['volumeInfo'] as Map<String, dynamic>? ?? {};
     final accessInfo = json['accessInfo'] as Map<String, dynamic>? ?? {};
 
+    final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>? ?? {};
     final pdf = accessInfo['pdf'] as Map<String, dynamic>? ?? {};
     final epub = accessInfo['epub'] as Map<String, dynamic>? ?? {};
 
     return BookModel(
       id: json['id']?.toString() ?? '',
-      title: volumeInfo['title']?.toString() ?? 'Không có tiêu đề',
-
+      title: volumeInfo['title']?.toString() ?? 'No title',
       authors:
           (volumeInfo['authors'] as List<dynamic>?)
-              ?.map((item) => item.toString())
+              ?.map((e) => e.toString())
               .toList() ??
           [],
-
-      description: volumeInfo['description']?.toString() ?? 'Chưa có mô tả',
-
-      thumbnailUrl: _getGoogleBookThumbnail(volumeInfo),
-
+      description: volumeInfo['description']?.toString() ?? '',
+      thumbnailUrl: imageLinks['thumbnail']?.toString() ?? '',
       categories:
           (volumeInfo['categories'] as List<dynamic>?)
-              ?.map((item) => item.toString())
+              ?.map((e) => e.toString())
               .toList() ??
           [],
-
       pageCount: volumeInfo['pageCount'] is int
           ? volumeInfo['pageCount'] as int
           : 0,
-
       language: volumeInfo['language']?.toString() ?? '',
       previewLink: volumeInfo['previewLink']?.toString() ?? '',
       webReaderLink: accessInfo['webReaderLink']?.toString() ?? '',
       source: 'google_books',
 
       pdfDownloadLink: pdf['downloadLink']?.toString() ?? '',
-      epudDownloadLink: epub['downloadLink']?.toString() ?? '',
+      epubDownloadLink: epub['downloadLink']?.toString() ?? '',
+
+      localFilePath: '',
+      coverLocalPath: '',
       isDownloaded: false,
     );
   }
@@ -104,7 +103,7 @@ class BookModel extends Book {
       webReaderLink: map['web_reader_link'],
       source: map['source']?.toString() ?? 'google_books',
       pdfDownloadLink: map['pdf_download_link']?.toString() ?? '',
-      epudDownloadLink: map['epub_download_link']?.toString() ?? '',
+      epubDownloadLink: map['epub_download_link']?.toString() ?? '',
       localFilePath: map['local_file_path']?.toString() ?? '',
       isDownloaded: map['is_downloaded'] == 1,
     );
@@ -125,7 +124,7 @@ class BookModel extends Book {
       'web_reader_link': webReaderLink,
       'source': source,
       'pdf_download_link': pdfDownloadLink,
-      'epub_download_link': epudDownloadLink,
+      'epub_download_link': epubDownloadLink,
       'local_file_path': localFilePath,
       'cover_local_path': '',
       'is_downloaded': isDownloaded ? 1 : 0,
@@ -148,7 +147,7 @@ class BookModel extends Book {
       webReaderLink: webReaderLink,
       source: source,
       pdfDownloadLink: pdfDownloadLink,
-      epudDownloadLink: epudDownloadLink,
+      epubDownloadLink: epubDownloadLink,
       localFilePath: localFilePath,
       isDownloaded: isDownloaded ?? this.isDownloaded,
     );
@@ -172,7 +171,7 @@ class BookModel extends Book {
       webReaderLink: book.webReaderLink,
       source: book.source,
       pdfDownloadLink: book.pdfDownloadLink,
-      epudDownloadLink: book.epudDownloadLink,
+      epubDownloadLink: book.epubDownloadLink,
       localFilePath: localFilePath ?? book.localFilePath,
       isDownloaded: isDownloaded ?? book.isDownloaded,
     );
