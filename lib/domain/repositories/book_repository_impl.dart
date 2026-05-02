@@ -87,7 +87,7 @@ class BookRepositoryImpl implements BookRepository {
     final downloadedbook = BookModel.fromEntity(
       book,
       isDownloaded: localPath != null,
-      localFilePath: localPath ?? '',
+      localFilePath: localPath,
     );
     await _offlineBookDao.insertOrUpdateBook(downloadedbook);
   }
