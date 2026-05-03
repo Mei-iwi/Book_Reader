@@ -64,3 +64,16 @@ lib/config/env.dart
 *.env
 build/
 .dart_tool/
+
+
+# Environment / API keys
+.env
+.env.*
+!.env.example
+
+# Local app config with API keys
+lib/config/env.dart
+.dart_tool/
+build/
+.env
+*.env

@@ -3,6 +3,8 @@ import 'package:book_reader/core/widgets/ShareWidgetHome/form.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
+import 'package:book_reader/presentation/pages/profile/myprofile.dart';
+import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -46,7 +48,12 @@ class _Home extends State<Home> {
         centerTitle: true,
         actions: [
           InkWell(
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => Myprofile()),
+              );
+            },
             child: CircleAvatar(
               backgroundImage: AssetImage(Templateimage.avatar),
             ),
@@ -127,11 +134,22 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
                   );
                 },
                 onDownload: () async {
-                  await context.read<HomeBookProvider>().saveBookOffline(book);
+                  debugPrint('===== BẤM DOWNLOAD =====');
+                  debugPrint('Book title: ${book.title}');
+
+                  final homeProvider = context.read<HomeBookProvider>();
+                  final libraryProvider = context.read<LibraryProvider>();
+
+                  await homeProvider.saveBookOffline(book);
+
+                  if (!context.mounted) return;
+
+                  await libraryProvider.loadOfflineBooks();
+
+                  if (!context.mounted) return;
+
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã lưu sách vào thư viện offline'),
-                    ),
+                    const SnackBar(content: Text('Đã lưu sách vào thư viện')),
                   );
                 },
               );

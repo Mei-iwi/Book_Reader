@@ -2,28 +2,30 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/*
- * Cấu hình http dùng chung 
- */
 class ApiClient {
-  final http.Client _client;
-
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
-
   Future<Map<String, dynamic>> get(
     String baseUrl,
-    String path, {
+    String endpoint, {
     Map<String, String>? queryParameters,
   }) async {
-    final uri = Uri.parse(
-      baseUrl,
-    ).replace(path: path, queryParameters: queryParameters);
+    final uri = Uri.https(
+      baseUrl.replaceFirst('https://', '').replaceFirst('http://', ''),
+      endpoint,
+      queryParameters,
+    );
 
-    final respone = await _client.get(uri);
+    final response = await http.get(
+      uri,
+      headers: const {
+        'X-Android-Package': 'com.example.book_reader',
+        'X-Android-Cert': '07E1AE082737C6C13905E706AD8F833C48D5BC84',
+      },
+    );
 
-    if (respone.statusCode >= 200 && respone.statusCode < 300) {
-      return jsonDecode(respone.body) as Map<String, dynamic>;
+    if (response.statusCode != 200) {
+      throw Exception('Api error: ${response.statusCode} - ${response.body}');
     }
-    throw Exception('Api erroer: ${respone.statusCode} - ${respone.body}');
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }

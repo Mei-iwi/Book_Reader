@@ -1,4 +1,5 @@
 import 'package:book_reader/presentation/pages/home/home.dart';
+import 'package:book_reader/presentation/pages/library/library_page.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +15,7 @@ class _Homescreen extends State<Homescreen> {
   int _index = 0;
   final List<Widget> _pages = [
     Home(),
-    Scaffold(body: Center(child: Text("Đang phát triển "))),
+    LibraryPage(),
     Scaffold(body: Center(child: Text("Đang phát triển "))),
     Myprofile(),
   ];

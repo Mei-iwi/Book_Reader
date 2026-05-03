@@ -13,7 +13,7 @@ class HomeBookProvider extends ChangeNotifier {
   Future<void> downloadSelectedBook(Book book) async {
     try {
       await _downloadBook(book);
-      if (book.pdfDownloadLink.isEmpty && book.epudDownloadLink.isEmpty) {
+      if (book.pdfDownloadLink.isEmpty && book.epubDownloadLink.isEmpty) {
         downloadMessage =
             "Sách này chỉ lưu thông tin offline, chưa có PDF/EPUB";
       } else {
