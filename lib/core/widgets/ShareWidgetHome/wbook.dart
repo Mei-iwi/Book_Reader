@@ -1,5 +1,5 @@
 import 'package:book_reader/core/widgets/ShareFunction/checkImage.dart';
-import 'package:book_reader/presentation/pages/reader/reader.dart';
+import 'package:book_reader/presentation/pages/details/details.dart';
 import 'package:flutter/material.dart';
 
 Widget wbook({
@@ -122,15 +122,17 @@ void showBookSnackBar(
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
+                      Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => Reader(
+                          builder: (context) => Details(
+                            title: title,
+                            url: url,
                             value: 1,
                             total: 3636,
-                            title: title,
                             assetPath:
                                 'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt',
+                            author: author,
+                            views: 0,
                           ),
                         ),
                       );
@@ -142,7 +144,7 @@ void showBookSnackBar(
                       backgroundColor: Colors.blue,
                     ),
                     child: Text(
-                      'Read',
+                      'Detials',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
