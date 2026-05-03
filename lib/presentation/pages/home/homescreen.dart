@@ -1,3 +1,4 @@
+import 'package:book_reader/presentation/pages/communicate/news_page.dart';
 import 'package:book_reader/presentation/pages/home/home.dart';
 import 'package:book_reader/presentation/pages/library/library_page.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
@@ -17,7 +18,7 @@ class _Homescreen extends State<Homescreen> {
   final List<Widget> _pages = [
     Home(),
     CategoryPage(),
-    Scaffold(body: Center(child: Text("Đang phát triển "))),
+    const NewsPage(),
     Myprofile(),
   ];
 
