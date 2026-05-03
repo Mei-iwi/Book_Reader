@@ -20,7 +20,7 @@ class _item extends State<Item> {
       },
       child: Container(
         padding: EdgeInsets.all(10),
-        width: 120,
+        width: MediaQuery.of(context).size.width * 0.3,
 
         decoration: BoxDecoration(
           color: Colors.white,

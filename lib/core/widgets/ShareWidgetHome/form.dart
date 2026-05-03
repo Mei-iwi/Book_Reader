@@ -25,7 +25,7 @@ class _formSearch extends State<formSearch> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 250,
+            width: MediaQuery.of(context).size.width * 0.6,
             height: 40,
             child: TextFormField(
               controller: widget.controller,
