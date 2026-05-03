@@ -3,6 +3,8 @@ import 'package:book_reader/core/widgets/ShareWidgetHome/form.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
+import 'package:book_reader/presentation/pages/notification/notification_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +36,7 @@ class _Home extends State<Home> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HomeBookProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: formSearch(
@@ -44,19 +47,43 @@ class _Home extends State<Home> {
           },
         ),
         centerTitle: true,
+
         actions: [
+          // NOTIFICATION BUTTON
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationScreen(),
+                ),
+              );
+            },
+          ),
+
+          // AVATAR
           InkWell(
             onTap: () {},
             child: CircleAvatar(
               backgroundImage: AssetImage(Templateimage.avatar),
             ),
           ),
-          SizedBox(width: 10),
+
+          const SizedBox(width: 10),
         ],
       ),
+
       drawer: Drawer(
-        child: ListView(children: [ListTile(title: Text("Menu"))]),
+        child: ListView(
+          children: const [
+            ListTile(
+              title: Text("Menu"),
+            ),
+          ],
+        ),
       ),
+
       body: Padding(
         padding: const EdgeInsets.only(left: 10),
         child: _buildBody(provider),
@@ -67,10 +94,15 @@ class _Home extends State<Home> {
 
 Widget _buildBody(HomeBookProvider provider) {
   if (provider.isLoading) {
-    return const Center(child: CircularProgressIndicator());
+    return const Center(
+      child: CircularProgressIndicator(),
+    );
   }
+
   if (provider.errMessage != null) {
-    return Center(child: Text(provider.errMessage!));
+    return Center(
+      child: Text(provider.errMessage!),
+    );
   }
 
   return SingleChildScrollView(
@@ -78,8 +110,16 @@ Widget _buildBody(HomeBookProvider provider) {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buiderBookSection(title: 'Continue...', books: provider.continueBooks),
-        _buiderBookSection(title: 'From Library', books: provider.libraryBooks),
+        _buiderBookSection(
+          title: 'Continue...',
+          books: provider.continueBooks,
+        ),
+
+        _buiderBookSection(
+          title: 'From Library',
+          books: provider.libraryBooks,
+        ),
+
         _buiderBookSection(
           title: 'Recommendations',
           books: provider.recommendationBooks,
@@ -89,11 +129,18 @@ Widget _buildBody(HomeBookProvider provider) {
   );
 }
 
-Widget _buiderBookSection({required String title, required List<Book> books}) {
+Widget _buiderBookSection({
+  required String title,
+  required List<Book> books,
+}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(title, style: style()),
+      Text(
+        title,
+        style: style(),
+      ),
+
       const SizedBox(height: 8),
 
       if (books.isEmpty)
@@ -110,15 +157,20 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               final book = books[index];
+
               return wbook(
                 context: context,
+
                 url: book.thumbnailUrl.isNotEmpty
                     ? book.thumbnailUrl
                     : Templateimage.book1,
+
                 title: book.title,
+
                 author: book.authors.isNotEmpty
                     ? book.authors.join(', ')
-                    : "Unknow",
+                    : "Unknown",
+
                 func: () {
                   Navigator.pushNamed(
                     context,
@@ -126,11 +178,17 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
                     arguments: book.id,
                   );
                 },
+
                 onDownload: () async {
-                  await context.read<HomeBookProvider>().saveBookOffline(book);
+                  await context
+                      .read<HomeBookProvider>()
+                      .saveBookOffline(book);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Đã lưu sách vào thư viện offline'),
+                      content: Text(
+                        'Đã lưu sách vào thư viện offline',
+                      ),
                     ),
                   );
                 },
@@ -143,5 +201,8 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
 }
 
 TextStyle style() {
-  return TextStyle(fontWeight: FontWeight.bold, fontSize: 15);
+  return const TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 15,
+  );
 }

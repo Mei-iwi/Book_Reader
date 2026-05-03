@@ -5,7 +5,9 @@ import 'package:book_reader/data/datasources/local/file_cache/book_file_download
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/datasources/remote/api/google_books_api.dart';
 import 'package:book_reader/domain/repositories/book_repository_impl.dart';
+import 'package:book_reader/domain/usecases/search_books.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
+import 'package:book_reader/presentation/state/book_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,16 +20,28 @@ void main() {
   final bookFileDownloader = BookFileDownloader();
 
   final bookRepository = BookRepositoryImpl(
-    googleBooksApi,
-    offlineBookDao,
-    bookFileDownloader,
-  );
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => HomeBookProvider(bookRepository)),
-      ],
-      child: const Application(),
-    ),
-  );
+  googleBooksApi,
+  offlineBookDao,
+  bookFileDownloader,
+);
+
+final searchBooks = SearchBooks(bookRepository);
+
+runApp(
+  MultiProvider(
+    providers: [
+
+      ChangeNotifierProvider(
+        create: (_) => HomeBookProvider(bookRepository),
+      ),
+
+      ChangeNotifierProvider(
+        create: (_) => BookProvider(searchBooks),
+      ),
+
+    ],
+
+    child: const Application(),
+  ),
+);
 }
