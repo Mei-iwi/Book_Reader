@@ -119,8 +119,9 @@ void showBookSnackBar(
                   ],
                 ),
               ),
+
               Padding(
-                padding: const EdgeInsets.only(right: 15),
+                padding: const EdgeInsets.only(left: 25),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
