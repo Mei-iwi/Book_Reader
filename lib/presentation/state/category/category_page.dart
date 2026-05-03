@@ -1,3 +1,4 @@
+import 'package:book_reader/presentation/pages/library/library_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/book_provider.dart';
@@ -16,7 +17,8 @@ class _CategoryPageState extends State<CategoryPage> {
     "History book",
     "Educational books",
     "Life skills books",
-    "Travel books"
+    "Travel books",
+    "Downloaded",
   ];
 
   @override
@@ -51,7 +53,11 @@ class _CategoryPageState extends State<CategoryPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  _buildTabButton("Book", const Color(0xFF91E4FB), isSelected: true),
+                  _buildTabButton(
+                    "Book",
+                    const Color(0xFF91E4FB),
+                    isSelected: true,
+                  ),
                   const SizedBox(width: 8),
                   _buildTabButton("Comic", const Color(0xFF91E4FB)),
                   const SizedBox(width: 8),
@@ -68,7 +74,7 @@ class _CategoryPageState extends State<CategoryPage> {
                 itemCount: categories.length,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemBuilder: (context, index) {
-                  return _buildCategoryItem(categories[index]);
+                  return _buildCategoryItem(categories[index], index);
                 },
               ),
             ),
@@ -102,36 +108,55 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   // Widget tạo dòng Thể loại (Science, History...) với bo góc lớn và icon mũi tên
- Widget _buildCategoryItem(String title) {
-  // Bạn phải dùng lệnh return và một Widget (ở đây là Container)
-  return Container(
-    margin: const EdgeInsets.only(bottom: 15),
-    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 18),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE0F7FA), // Màu xanh nhạt bám sát ảnh thiết kế
-      borderRadius: BorderRadius.circular(35),
-      border: Border.all(
-        color: Colors.red.withOpacity(0.2), // Viền đỏ nhạt theo yêu cầu
+  Widget _buildCategoryItem(String title, int index) {
+    // Bạn phải dùng lệnh return và một Widget (ở đây là Container)
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0F7FA), // Màu xanh nhạt bám sát ảnh thiết kế
+        borderRadius: BorderRadius.circular(35),
+        border: Border.all(
+          color: Colors.red.withOpacity(0.2), // Viền đỏ nhạt theo yêu cầu
+        ),
       ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
+      child: InkWell(
+        onTap: () {
+          if (index == 0) {
+            debugPrint("Click Science Books");
+          } else if (index == 1) {
+            debugPrint("Click History Books");
+          } else if (index == 2) {
+            debugPrint("Click Educational Books");
+          } else if (index == 3) {
+            debugPrint("Click Life skills Books");
+          } else if (index == 4) {
+            debugPrint("Click Travel Books");
+          } else if (index == 5) {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => LibraryPage()));
+          }
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios, // Icon mũi tên bên phải
+              size: 20,
+              color: Colors.black,
+            ),
+          ],
         ),
-        const Icon(
-          Icons.arrow_forward_ios, // Icon mũi tên bên phải
-          size: 20,
-          color: Colors.black,
-        ),
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 }

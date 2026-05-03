@@ -1,6 +1,7 @@
 import 'package:book_reader/presentation/pages/home/home.dart';
 import 'package:book_reader/presentation/pages/library/library_page.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
+import 'package:book_reader/presentation/state/category/category_page.dart';
 import 'package:flutter/material.dart';
 
 class Homescreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class _Homescreen extends State<Homescreen> {
   int _index = 0;
   final List<Widget> _pages = [
     Home(),
-    LibraryPage(),
+    CategoryPage(),
     Scaffold(body: Center(child: Text("Đang phát triển "))),
     Myprofile(),
   ];
