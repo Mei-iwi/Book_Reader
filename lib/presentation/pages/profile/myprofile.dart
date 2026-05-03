@@ -1,3 +1,4 @@
+import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/item.dart';
@@ -15,8 +16,63 @@ class _Myprofile extends State<Myprofile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () {
+            Navigator.restorablePushNamed(context, "/homescreen");
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+        title: Text(
+          "Profile",
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          SizedBox(width: 10),
+          InkWell(
+            onTap: () {
+              Navigator.pushNamed(context, AppRoute.membership);
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFF8C00)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.workspace_premium, color: Colors.white, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'Hội viên',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: 10),
+        ],
+      ),
       body: Padding(
-        padding: const EdgeInsets.only(top: 50),
+        padding: const EdgeInsets.only(top: 10),
         child: Container(
           padding: EdgeInsets.all(10),
           child: SingleChildScrollView(
@@ -42,12 +98,18 @@ class _Myprofile extends State<Myprofile> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         //Dữ liệu họ và tên
-                        Text(
-                          "Mai Nhật Cường",
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        //Thêm nút hội viên
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "Mai Nhật Cường",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         //Dữ liệu mail hoặc số điện thoại
                         Text(

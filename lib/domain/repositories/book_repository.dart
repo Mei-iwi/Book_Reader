@@ -9,7 +9,7 @@ abstract class BookRepository {
 
   Future<void> saveBookOffline(Book book);
   Future<List<Book>> getOfflineBooks();
-  Future<void> deleteOfflineBooks(String bookId);
+  Future<void> deleteOfflineBooks(Book book);
 
   Future<void> downloadBook(Book book);
   Future<void> saveBookMetadataOffline(Book book);
