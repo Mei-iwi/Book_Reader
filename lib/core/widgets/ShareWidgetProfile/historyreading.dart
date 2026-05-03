@@ -52,7 +52,7 @@ Widget bookReading({
                       ),
                     ),
                     SizedBox(height: 20),
-                    percentBook(percent),
+                    percentBook(percent, context),
                   ],
                 ),
               ],
@@ -64,7 +64,7 @@ Widget bookReading({
   );
 }
 
-Widget percentBook(double percent) {
+Widget percentBook(double percent, BuildContext context) {
   return Stack(
     clipBehavior: Clip.none,
     children: [
@@ -73,7 +73,7 @@ Widget percentBook(double percent) {
           color: Colors.blue[100],
           borderRadius: BorderRadius.circular(100),
         ),
-        width: 180,
+        width: MediaQuery.of(context).size.width * 0.5,
         height: 10,
       ),
       Container(
