@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:book_reader/config/routes.dart';
+import 'package:book_reader/presentation/pages/comment/comments.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -287,6 +288,16 @@ class _Reader extends State<Reader> {
               onPressed: _reloadWebView,
               icon: const Icon(Icons.refresh, color: Colors.blue),
             ),
+          IconButton(
+            tooltip: 'Bình luận',
+            onPressed: () {
+               Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context)=>const BookDetailPage())
+                );
+            },
+            icon: const Icon(Icons.comment, color: Colors.blue),
+          ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.more_vert, color: Colors.blue),
