@@ -36,4 +36,39 @@ public class JwtHelper
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public int? GetUserIdFromToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        var key = _configuration["Jwt:Key"] ?? "BookReaderDevelopmentSecretKey123456";
+        var issuer = _configuration["Jwt:Issuer"] ?? "BookReader.Api";
+        var audience = _configuration["Jwt:Audience"] ?? "BookReader.Flutter";
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ValidateIssuer = true,
+            ValidIssuer = issuer,
+            ValidateAudience = true,
+            ValidAudience = audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        try
+        {
+            var principal = new JwtSecurityTokenHandler().ValidateToken(token, validationParameters, out _);
+            var userIdValue = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            return int.TryParse(userIdValue, out var userId) ? userId : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
