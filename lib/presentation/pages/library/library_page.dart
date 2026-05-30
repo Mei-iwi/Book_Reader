@@ -174,6 +174,7 @@ class _LibraryBookItem extends StatelessWidget {
           value: 1,
           total: book.pageCount > 0 ? book.pageCount : 1,
           title: book.title,
+          bookId: book.id,
           localFilePath: book.localFilePath,
           webReaderLink: book.webReaderLink,
           previewLink: book.previewLink,

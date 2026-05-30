@@ -1,6 +1,12 @@
 import 'dart:io';
 
 import 'package:book_reader/config/routes.dart';
+import 'package:book_reader/core/services/http/api_client.dart';
+import 'package:book_reader/data/datasources/local/dao/bookmark_dao.dart';
+import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/data/datasources/remote/api/bookmark_api.dart';
+import 'package:book_reader/data/datasources/remote/api/reading_progress_api.dart';
 import 'package:book_reader/presentation/pages/comment/comments.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +17,7 @@ class Reader extends StatefulWidget {
   final int value;
   final int total;
   final String title;
+  final String? bookId;
 
   /// File text tải/lưu trong máy.
   /// Ví dụ: /data/user/0/.../book.txt
@@ -34,6 +41,7 @@ class Reader extends StatefulWidget {
     required this.value,
     required this.total,
     required this.title,
+    this.bookId,
     this.localFilePath,
     this.assetPath,
     this.contentText,
@@ -48,6 +56,10 @@ class Reader extends StatefulWidget {
 class _Reader extends State<Reader> {
   late int newvalue = widget.value;
   late Future<String> _contentFuture;
+  late final ReadingProgressDao _readingProgressDao;
+  late final BookmarkDao _bookmarkDao;
+  late final ReadingProgressApi _readingProgressApi;
+  late final BookmarkApi _bookmarkApi;
 
   WebViewController? _webViewController;
   int _webProgress = 0;
@@ -90,6 +102,12 @@ class _Reader extends State<Reader> {
     super.initState();
 
     _contentFuture = _loadContent();
+    final appDatabase = AppDatabase.instance;
+    final apiClient = ApiClient();
+    _readingProgressDao = ReadingProgressDao(appDatabase);
+    _bookmarkDao = BookmarkDao(appDatabase);
+    _readingProgressApi = ReadingProgressApi(apiClient);
+    _bookmarkApi = BookmarkApi(apiClient);
 
     if (_shouldUseWebView) {
       _initWebView();
@@ -174,6 +192,54 @@ class _Reader extends State<Reader> {
     return 'Sách này chưa có nội dung để đọc.';
   }
 
+  Future<void> _saveProgress() async {
+    final bookId = widget.bookId;
+    if (bookId == null || bookId.trim().isEmpty) return;
+
+    final totalPage = widget.total <= 0 ? 1 : widget.total;
+    final progressPercent = (newvalue / totalPage) * 100;
+
+    await _readingProgressDao.saveProgress(
+      bookId: bookId,
+      currentPage: newvalue,
+      progressPercent: progressPercent,
+    );
+
+    final backendBookId = int.tryParse(bookId);
+    if (backendBookId == null) return;
+
+    try {
+      await _readingProgressApi.saveProgress(
+        bookId: backendBookId,
+        currentPage: newvalue,
+        progressPercent: progressPercent,
+        userId: 1,
+      );
+    } catch (e) {
+      debugPrint('SYNC PROGRESS ERROR: $e');
+    }
+  }
+
+  Future<void> _saveBookmark() async {
+    final bookId = widget.bookId;
+    if (bookId == null || bookId.trim().isEmpty) return;
+
+    await _bookmarkDao.addBookmark(bookId: bookId, page: newvalue);
+
+    final backendBookId = int.tryParse(bookId);
+    if (backendBookId == null) return;
+
+    try {
+      await _bookmarkApi.addBookmark(
+        bookId: backendBookId,
+        page: newvalue,
+        userId: 1,
+      );
+    } catch (e) {
+      debugPrint('SYNC BOOKMARK ERROR: $e');
+    }
+  }
+
   void _showExitDialog() {
     final parentContext = context;
 
@@ -204,17 +270,23 @@ class _Reader extends State<Reader> {
 
               await Future.delayed(const Duration(seconds: 1));
 
-              if (!mounted) return;
+              if (!parentContext.mounted) return;
 
               Navigator.of(parentContext, rootNavigator: true).pop();
 
+              await _saveProgress();
+
+              if (!parentContext.mounted) return;
               Navigator.pushReplacementNamed(parentContext, AppRoute.home);
             },
             child: const Text('Rời khỏi'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               // TODO: xử lý lưu bookmark ở đây
+              await _saveBookmark();
+              await _saveProgress();
+              if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
             },
             child: const Text('Lưu bookmark rời khỏi'),
@@ -234,12 +306,14 @@ class _Reader extends State<Reader> {
     setState(() {
       newvalue - 1 <= 0 ? newvalue = widget.total : newvalue -= 1;
     });
+    _saveProgress();
   }
 
   void _nextPage() {
     setState(() {
       newvalue + 1 > widget.total ? newvalue = 1 : newvalue += 1;
     });
+    _saveProgress();
   }
 
   Future<void> _goBackWebView() async {

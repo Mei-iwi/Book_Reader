@@ -1,10 +1,12 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/myImages.dart';
 import 'package:book_reader/core/constants/myText.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
-import '../../../core/widgets/ShareWidgetAuth/banner.dart';
+import 'package:provider/provider.dart';
 
 class Signin extends StatefulWidget {
   const Signin({super.key});
@@ -25,42 +27,64 @@ class _Signin extends State<Signin> {
     super.dispose();
   }
 
+  Future<void> _login() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.login(
+      email: mail.text.trim(),
+      password: password.text,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushReplacementNamed(context, AppRoute.home);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.errorMessage ?? 'Login failed')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       body: Form(
         key: _formKey,
         child: Column(
           children: [
             myBanner(urlBanner: Myimages.myBanner, text: Mytext.textSignIn),
-            SizedBox(height: 70),
+            const SizedBox(height: 70),
             formInput(
-              text: "Phone or Email",
+              text: 'Phone or Email',
               icon: Icons.mail,
               isPassword: false,
               controller: mail,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
-                  return "Điện thoại hoặc email không được để trống";
+                  return 'Email khong duoc de trong';
                 }
                 return null;
               },
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
             formInput(
-              text: "Password",
+              text: 'Password',
               icon: Icons.lock,
               isPassword: true,
               controller: password,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
-                  return "Mật khẩu không được để trống";
+                  return 'Mat khau khong duoc de trong';
                 }
                 return null;
               },
             ),
             Padding(
-              padding: EdgeInsets.only(right: 80),
+              padding: const EdgeInsets.only(right: 80),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -71,7 +95,7 @@ class _Signin extends State<Signin> {
                         AppRoute.fotgotpassword,
                       );
                     },
-                    child: Text(
+                    child: const Text(
                       'Forget Password',
                       style: TextStyle(color: Colors.blue),
                     ),
@@ -79,20 +103,16 @@ class _Signin extends State<Signin> {
                 ],
               ),
             ),
-            SizedBox(height: 30),
-            buttonFull(
-              text: Mytext.textSignIn,
-              func: () {
-                if (_formKey.currentState?.validate() ?? false) {
-                  //Xử lý chuyển hướng
-                }
-              },
-            ),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
+            if (isLoading)
+              const CircularProgressIndicator()
+            else
+              buttonFull(text: Mytext.textSignIn, func: _login),
+            const SizedBox(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   "Don't have a account?",
                   style: TextStyle(color: Colors.grey),
                 ),
@@ -100,7 +120,10 @@ class _Signin extends State<Signin> {
                   onPressed: () {
                     Navigator.pushReplacementNamed(context, AppRoute.signup);
                   },
-                  child: Text("Sign up", style: TextStyle(color: Colors.blue)),
+                  child: const Text(
+                    'Sign up',
+                    style: TextStyle(color: Colors.blue),
+                  ),
                 ),
               ],
             ),
