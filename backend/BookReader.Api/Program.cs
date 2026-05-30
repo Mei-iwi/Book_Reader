@@ -1,5 +1,14 @@
+using BookReader.Api.Entities;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddDbContext<BookReaderDbContext>(option => option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddCors(options => options.AddPolicy("AllowAll", policy =>
+{
+    policy.AllowAnyMethod().AllowAnyOrigin().AllowAnyHeader();
+}));
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -8,6 +17,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+app.UseCors("AllowAll");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
