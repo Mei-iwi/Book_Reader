@@ -50,4 +50,17 @@ public class LibraryRepository : ILibraryRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<UserLibrary?> SetFavoriteAsync(int userId, int bookId, bool isFavorite)
+    {
+        var item = await GetAsync(userId, bookId);
+        if (item == null)
+        {
+            return null;
+        }
+
+        item.IsFavorite = isFavorite;
+        await _context.SaveChangesAsync();
+        return item;
+    }
 }

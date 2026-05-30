@@ -21,11 +21,11 @@ public class BookmarkService : IBookmarkService
         return ApiResponse<List<BookmarkDto>>.Ok(bookmarks.Select(ToDto).ToList());
     }
 
-    public async Task<ApiResponse<BookmarkDto>> AddAsync(SaveBookmarkRequest request)
+    public async Task<ApiResponse<BookmarkDto>> AddAsync(int userId, SaveBookmarkRequest request)
     {
         var bookmark = new Bookmark
         {
-            UserId = request.UserId,
+            UserId = userId,
             BookId = request.BookId,
             Page = request.Page,
             Note = request.Note,
@@ -34,6 +34,14 @@ public class BookmarkService : IBookmarkService
 
         var created = await _bookmarkRepository.AddAsync(bookmark);
         return ApiResponse<BookmarkDto>.Ok(ToDto(created), "Bookmark saved.");
+    }
+
+    public async Task<ApiResponse<BookmarkDto>> UpdateAsync(int userId, int bookmarkId, UpdateBookmarkRequest request)
+    {
+        var bookmark = await _bookmarkRepository.UpdateAsync(userId, bookmarkId, request.Page, request.Note);
+        return bookmark == null
+            ? ApiResponse<BookmarkDto>.Fail("Bookmark not found.")
+            : ApiResponse<BookmarkDto>.Ok(ToDto(bookmark), "Bookmark updated.");
     }
 
     public async Task<ApiResponse<bool>> DeleteAsync(int userId, int bookmarkId)
@@ -53,7 +61,8 @@ public class BookmarkService : IBookmarkService
             BookId = bookmark.BookId,
             Page = bookmark.Page,
             Note = bookmark.Note,
-            CreatedAt = bookmark.CreatedAt
+            CreatedAt = bookmark.CreatedAt,
+            UpdatedAt = bookmark.UpdatedAt
         };
     }
 }

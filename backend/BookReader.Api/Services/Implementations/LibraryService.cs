@@ -21,9 +21,9 @@ public class LibraryService : ILibraryService
         return ApiResponse<List<LibraryItemDto>>.Ok(items.Select(ToDto).ToList());
     }
 
-    public async Task<ApiResponse<LibraryItemDto>> AddAsync(AddToLibraryRequest request)
+    public async Task<ApiResponse<LibraryItemDto>> AddAsync(int userId, int bookId)
     {
-        var existing = await _libraryRepository.GetAsync(request.UserId, request.BookId);
+        var existing = await _libraryRepository.GetAsync(userId, bookId);
         if (existing != null)
         {
             return ApiResponse<LibraryItemDto>.Ok(ToDto(existing), "Book already exists in library.");
@@ -31,8 +31,8 @@ public class LibraryService : ILibraryService
 
         var item = new UserLibrary
         {
-            UserId = request.UserId,
-            BookId = request.BookId,
+            UserId = userId,
+            BookId = bookId,
             IsFavorite = false,
             IsDownloaded = false,
             AddedAt = DateTime.UtcNow
@@ -48,6 +48,14 @@ public class LibraryService : ILibraryService
         return removed
             ? ApiResponse<bool>.Ok(true, "Removed from library.")
             : ApiResponse<bool>.Fail("Library item not found.");
+    }
+
+    public async Task<ApiResponse<LibraryItemDto>> SetFavoriteAsync(int userId, int bookId, bool isFavorite)
+    {
+        var item = await _libraryRepository.SetFavoriteAsync(userId, bookId, isFavorite);
+        return item == null
+            ? ApiResponse<LibraryItemDto>.Fail("Library item not found.")
+            : ApiResponse<LibraryItemDto>.Ok(ToDto(item), "Favorite updated.");
     }
 
     private static LibraryItemDto ToDto(UserLibrary item)

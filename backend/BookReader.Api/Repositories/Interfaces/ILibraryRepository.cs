@@ -8,4 +8,5 @@ public interface ILibraryRepository
     Task<UserLibrary?> GetAsync(int userId, int bookId);
     Task<UserLibrary> AddAsync(UserLibrary item);
     Task<bool> RemoveAsync(int userId, int bookId);
+    Task<UserLibrary?> SetFavoriteAsync(int userId, int bookId, bool isFavorite);
 }

@@ -9,3 +9,14 @@ public class MembershipPackageDto
     public string? Description { get; set; }
     public bool IsActive { get; set; }
 }
+
+public class UserMembershipDto
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int MembershipPackageId { get; set; }
+    public string PackageName { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
