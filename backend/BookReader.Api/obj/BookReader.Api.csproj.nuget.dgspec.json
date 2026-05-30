@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\backend\\BookReader.Api\\BookReader.Api.csproj": {}
+    "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\BookReader.Api\\BookReader.Api.csproj": {}
   },
   "projects": {
-    "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\backend\\BookReader.Api\\BookReader.Api.csproj": {
+    "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\BookReader.Api\\BookReader.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\backend\\BookReader.Api\\BookReader.Api.csproj",
+        "projectUniqueName": "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\BookReader.Api\\BookReader.Api.csproj",
         "projectName": "BookReader.Api",
-        "projectPath": "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\backend\\BookReader.Api\\BookReader.Api.csproj",
+        "projectPath": "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\BookReader.Api\\BookReader.Api.csproj",
         "packagesPath": "C:\\Users\\admin\\.nuget\\packages\\",
-        "outputPath": "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\backend\\BookReader.Api\\obj\\",
+        "outputPath": "D:\\StudyMaterials\\HK6\\MobileProgramming\\Groups\\FinalProject\\book_reader\\backend\\BookReader.Api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -61,6 +61,8 @@
               "version": "[9.0.0, )"
             },
             "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
               "target": "Package",
               "version": "[9.0.0, )"
             },
