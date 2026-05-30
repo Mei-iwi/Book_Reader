@@ -3,6 +3,7 @@ import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/item.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/wbook.dart';
+import 'package:book_reader/presentation/pages/profile/editprofile.dart';
 import 'package:flutter/material.dart';
 
 class Myprofile extends StatefulWidget {
@@ -124,7 +125,12 @@ class _Myprofile extends State<Myprofile> {
                         SizedBox(height: 5),
                         //Xử lý chỉnh sửa
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context, 
+                              MaterialPageRoute(builder: (context)=> const EditProfilePage())
+                            );
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFFE8F1F9),
                             shape: RoundedRectangleBorder(
