@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BookReader.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+83eb710cd9dc84624c05499b7e6ed5a49207074e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+29c3d06cbc95fef96cb2a1c61ae8d38bc3ca5081")]
 [assembly: System.Reflection.AssemblyProductAttribute("BookReader.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BookReader.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
