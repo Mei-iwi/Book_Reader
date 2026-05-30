@@ -16,6 +16,8 @@ class BookProvider extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
+
+      books = await _searchBooks(keyword);
     } catch (e) {
       errorMessage = "Không thể tải danh sách. Vui lòng thử lại";
     } finally {

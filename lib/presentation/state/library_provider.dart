@@ -1,15 +1,18 @@
+import 'package:book_reader/data/datasources/remote/api/library_api.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:flutter/foundation.dart';
 
 class LibraryProvider extends ChangeNotifier {
   final BookRepository _bookRepository;
+  final LibraryApi _libraryApi;
 
-  LibraryProvider(this._bookRepository);
+  LibraryProvider(this._bookRepository, this._libraryApi);
 
   bool isLoading = false;
   String? errMessage;
   List<Book> offlineBooks = [];
+  List<Book> remoteBooks = [];
 
   Future<void> loadOfflineBooks() async {
     try {
@@ -53,5 +56,32 @@ class LibraryProvider extends ChangeNotifier {
       errMessage = 'Không thể xóa sách: $e';
       notifyListeners();
     }
+  }
+
+  Future<void> loadRemoteLibrary({int userId = 1}) async {
+    try {
+      isLoading = true;
+      errMessage = null;
+      notifyListeners();
+
+      remoteBooks = await _libraryApi.getLibrary(userId: userId);
+    } catch (e) {
+      errMessage = 'Khong the tai thu vien online: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addRemoteBook(Book book, {int userId = 1}) async {
+    final bookId = int.tryParse(book.id);
+    if (bookId == null) return;
+    await _libraryApi.addBook(bookId, userId: userId);
+  }
+
+  Future<void> removeRemoteBook(Book book, {int userId = 1}) async {
+    final bookId = int.tryParse(book.id);
+    if (bookId == null) return;
+    await _libraryApi.removeBook(bookId, userId: userId);
   }
 }
