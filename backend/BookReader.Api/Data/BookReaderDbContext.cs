@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using BookReader.Api.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookReader.Api.Entities;
+namespace BookReader.Api.Data;
 
 public partial class BookReaderDbContext : DbContext
 {
@@ -36,10 +37,6 @@ public partial class BookReaderDbContext : DbContext
     public virtual DbSet<UserLibrary> UserLibraries { get; set; }
 
     public virtual DbSet<UserMembership> UserMemberships { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source=MEI\\SQLEXPRESS;Initial Catalog=BookReaderDb;User ID=sa;Password=123;Trust Server Certificate=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
