@@ -21,11 +21,11 @@ public class NoteService : INoteService
         return ApiResponse<List<NoteDto>>.Ok(notes.Select(ToDto).ToList());
     }
 
-    public async Task<ApiResponse<NoteDto>> AddAsync(SaveNoteRequest request)
+    public async Task<ApiResponse<NoteDto>> AddAsync(int userId, SaveNoteRequest request)
     {
         var note = new NoteHighlight
         {
-            UserId = request.UserId,
+            UserId = userId,
             BookId = request.BookId,
             Page = request.Page,
             SelectedText = request.SelectedText,
@@ -36,6 +36,14 @@ public class NoteService : INoteService
 
         var created = await _noteRepository.AddAsync(note);
         return ApiResponse<NoteDto>.Ok(ToDto(created), "Note saved.");
+    }
+
+    public async Task<ApiResponse<NoteDto>> UpdateAsync(int userId, int noteId, UpdateNoteRequest request)
+    {
+        var note = await _noteRepository.UpdateAsync(userId, noteId, request.Page, request.SelectedText, request.NoteContent, request.Color);
+        return note == null
+            ? ApiResponse<NoteDto>.Fail("Note not found.")
+            : ApiResponse<NoteDto>.Ok(ToDto(note), "Note updated.");
     }
 
     public async Task<ApiResponse<bool>> DeleteAsync(int userId, int noteId)
@@ -57,7 +65,8 @@ public class NoteService : INoteService
             SelectedText = note.SelectedText,
             NoteContent = note.NoteContent,
             Color = note.Color,
-            CreatedAt = note.CreatedAt
+            CreatedAt = note.CreatedAt,
+            UpdatedAt = note.UpdatedAt
         };
     }
 }

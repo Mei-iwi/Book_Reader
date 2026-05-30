@@ -29,6 +29,23 @@ public class NoteRepository : INoteRepository
         return note;
     }
 
+    public async Task<NoteHighlight?> UpdateAsync(int userId, int noteId, int page, string? selectedText, string? noteContent, string? color)
+    {
+        var note = await _context.NoteHighlights.FirstOrDefaultAsync(x => x.UserId == userId && x.Id == noteId);
+        if (note == null)
+        {
+            return null;
+        }
+
+        note.Page = page;
+        note.SelectedText = selectedText;
+        note.NoteContent = noteContent;
+        note.Color = color;
+        note.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return note;
+    }
+
     public async Task<bool> DeleteAsync(int userId, int noteId)
     {
         var note = await _context.NoteHighlights.FirstOrDefaultAsync(x => x.UserId == userId && x.Id == noteId);

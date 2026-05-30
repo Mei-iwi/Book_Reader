@@ -18,3 +18,8 @@ public class LibraryItemDto
     public DateTime AddedAt { get; set; }
     public BookDto? Book { get; set; }
 }
+
+public class FavoriteRequest
+{
+    public bool IsFavorite { get; set; }
+}

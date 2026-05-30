@@ -23,12 +23,17 @@ public class ProgressService : IProgressService
             : ApiResponse<ProgressDto>.Ok(ToDto(progress));
     }
 
-    public async Task<ApiResponse<ProgressDto>> SaveAsync(SaveProgressRequest request)
+    public async Task<ApiResponse<ProgressDto>> SaveAsync(int userId, int bookId, SaveProgressRequest request)
     {
+        if (request.ProgressPercent < 0 || request.ProgressPercent > 100)
+        {
+            return ApiResponse<ProgressDto>.Fail("Progress percent must be from 0 to 100.");
+        }
+
         var progress = new ReadingProgress
         {
-            UserId = request.UserId,
-            BookId = request.BookId,
+            UserId = userId,
+            BookId = bookId,
             CurrentPage = request.CurrentPage,
             ProgressPercent = request.ProgressPercent,
             UpdatedAt = DateTime.UtcNow

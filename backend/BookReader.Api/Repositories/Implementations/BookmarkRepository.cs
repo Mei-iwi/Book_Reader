@@ -29,6 +29,21 @@ public class BookmarkRepository : IBookmarkRepository
         return bookmark;
     }
 
+    public async Task<Bookmark?> UpdateAsync(int userId, int bookmarkId, int page, string? note)
+    {
+        var bookmark = await _context.Bookmarks.FirstOrDefaultAsync(x => x.UserId == userId && x.Id == bookmarkId);
+        if (bookmark == null)
+        {
+            return null;
+        }
+
+        bookmark.Page = page;
+        bookmark.Note = note;
+        bookmark.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return bookmark;
+    }
+
     public async Task<bool> DeleteAsync(int userId, int bookmarkId)
     {
         var bookmark = await _context.Bookmarks.FirstOrDefaultAsync(x => x.UserId == userId && x.Id == bookmarkId);
