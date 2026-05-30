@@ -26,6 +26,20 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login(LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return result.Success ? Ok(result) : Unauthorized(result);
+    }
+
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        var authorizationHeader = Request.Headers.Authorization.ToString();
+        if (string.IsNullOrWhiteSpace(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
+        {
+            return Unauthorized(BookReader.Api.Helpers.ApiResponse<AuthResponse>.Fail("Missing bearer token."));
+        }
+
+        var token = authorizationHeader["Bearer ".Length..].Trim();
+        var result = await _authService.GetMeAsync(token);
+        return result.Success ? Ok(result) : Unauthorized(result);
     }
 }
