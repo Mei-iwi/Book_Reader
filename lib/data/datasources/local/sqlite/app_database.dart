@@ -1,4 +1,3 @@
-import 'package:book_reader/data/datasources/local/tables/table_names.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 

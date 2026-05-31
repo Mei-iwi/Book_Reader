@@ -1,11 +1,7 @@
-import 'package:book_reader/config/env.dart';
 import 'package:book_reader/core/constants/api_constants.dart';
 import 'package:book_reader/core/services/http/api_client.dart';
 import 'package:book_reader/data/models/book_model.dart';
 
-/*
- * Tích hợp Google Books API.
- */
 class GoogleBooksApi {
   final ApiClient _apiClient;
 
@@ -18,41 +14,52 @@ class GoogleBooksApi {
     String? langRestrict,
     bool onlyFreeEbooks = false,
   }) async {
+    try {
+      final googleData = await _apiClient.get(
+        ApiConstants.backendBaseUrl,
+        ApiConstants.googleBooksSearch,
+        queryParameters: {
+          'keyword': keyword,
+          'startIndex': startIndex.toString(),
+          'maxResults': maxResult.toString(),
+          ...(langRestrict == null ? {} : {'langRestrict': langRestrict}),
+          'onlyFreeEbooks': onlyFreeEbooks.toString(),
+        },
+      );
+
+      final googleItems = googleData as List<dynamic>? ?? [];
+      if (googleItems.isNotEmpty) {
+        return googleItems
+            .map(
+              (item) => BookModel.fromBackendJson(item as Map<String, dynamic>),
+            )
+            .toList();
+      }
+    } catch (_) {
+      // Neu Google Books bi gioi han hoac loi mang, thu tim trong SQL Server.
+    }
+
     final data = await _apiClient.get(
-      ApiConstants.googleBooksBaseUrl,
-      ApiConstants.volumesEndpoint,
+      ApiConstants.backendBaseUrl,
+      ApiConstants.books,
       queryParameters: {
-        'q': keyword,
-        'startIndex': startIndex.toString(),
-        'maxResults': maxResult.toString(),
-        'projection': 'full',
-        'key': Env.googleBooksApiKey,
-
-        if (langRestrict != null) 'langRestrict': langRestrict,
-
-        // Ưu tiên sách có full text miễn phí
-        if (onlyFreeEbooks) 'filter': 'free-ebooks',
-
-        // Nếu chỉ muốn sách có EPUB
-        // 'download': 'epub',
+        'keyword': keyword,
+        'page': '1',
+        'pageSize': maxResult.toString(),
       },
     );
-
-    final items = data['items'] as List<dynamic>? ?? [];
-
+    final items = data as List<dynamic>? ?? [];
     return items
-        .map(
-          (item) => BookModel.fromGoogleBooksJson(item as Map<String, dynamic>),
-        )
+        .map((item) => BookModel.fromBackendJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<BookModel> getBookDetail(String volumeId) async {
-    final data = await _apiClient.get(
-      ApiConstants.googleBooksBaseUrl,
-      '${ApiConstants.volumesEndpoint}/$volumeId',
-      queryParameters: {'key': Env.googleBooksApiKey},
-    );
-    return BookModel.fromGoogleBooksJson(data);
+  Future<BookModel> getBookDetail(String bookId) async {
+    final endpoint = int.tryParse(bookId) == null
+        ? '${ApiConstants.books}/google/$bookId'
+        : '${ApiConstants.books}/$bookId';
+
+    final data = await _apiClient.get(ApiConstants.backendBaseUrl, endpoint);
+    return BookModel.fromBackendJson(data as Map<String, dynamic>);
   }
 }
