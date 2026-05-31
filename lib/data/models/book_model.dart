@@ -62,21 +62,30 @@ class BookModel extends Book {
     );
   }
 
-  static String _getGoogleBookThumbnail(Map<String, dynamic> volumeInfo) {
-    final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>?;
+  factory BookModel.fromBackendJson(Map<String, dynamic> json) {
+    List<String> readStringList(dynamic value) {
+      return (value as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          <String>[];
+    }
 
-    if (imageLinks == null) return '';
-
-    final url =
-        imageLinks['thumbnail']?.toString() ??
-        imageLinks['smallThumbnail']?.toString() ??
-        imageLinks['small']?.toString() ??
-        imageLinks['medium']?.toString() ??
-        imageLinks['large']?.toString() ??
-        imageLinks['extraLarge']?.toString() ??
-        '';
-
-    return url.replaceFirst('http://', 'https://');
+    return BookModel(
+      id: json['id']?.toString() ?? json['googleBookId']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'No title',
+      authors: readStringList(json['authors']),
+      description: json['description']?.toString() ?? '',
+      thumbnailUrl: json['thumbnailUrl']?.toString() ?? '',
+      categories: readStringList(json['categories']),
+      pageCount: json['pageCount'] is int ? json['pageCount'] as int : 0,
+      language: json['language']?.toString() ?? '',
+      previewLink: json['previewLink']?.toString() ?? '',
+      webReaderLink: json['webReaderLink']?.toString() ?? '',
+      source: json['source']?.toString() ?? 'backend',
+      pdfDownloadLink: json['pdfDownloadLink']?.toString() ?? '',
+      epubDownloadLink: json['epubDownloadLink']?.toString() ?? '',
+      localFilePath: json['localFilePath']?.toString() ?? '',
+      coverLocalPath: json['coverLocalPath']?.toString() ?? '',
+      isDownloaded: json['isDownloaded'] == true,
+    );
   }
 
   static List<String> _decodeStringList(dynamic value) {

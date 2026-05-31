@@ -1,10 +1,12 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/myImages.dart';
 import 'package:book_reader/core/constants/myText.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
-import '../../../core/widgets/ShareWidgetAuth/banner.dart';
+import 'package:provider/provider.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -29,8 +31,32 @@ class _Signup extends State<Signup> {
     super.dispose();
   }
 
+  Future<void> _register() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.register(
+      fullName: fullName.text.trim(),
+      email: mail.text.trim(),
+      password: passWord.text,
+      confirmPassword: confirmPassword.text,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushReplacementNamed(context, AppRoute.home);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.errorMessage ?? 'Register failed')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Form(
@@ -38,83 +64,79 @@ class _Signup extends State<Signup> {
           child: Column(
             children: [
               myBanner(urlBanner: Myimages.myBanner, text: Mytext.textSignUp),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               formInput(
-                text: "Full name",
+                text: 'Full name',
                 icon: Icons.people_alt,
                 isPassword: false,
                 controller: fullName,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return "Vui lòng nhập đầy đủ họ và tên";
+                    return 'Vui long nhap ho ten';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               formInput(
-                text: "Phone or Email",
+                text: 'Phone or Email',
                 icon: Icons.lock,
                 isPassword: false,
                 controller: mail,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return "Vui lòng nhập Số điện thoại hoặc Email";
+                    return 'Vui long nhap email';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               formInput(
-                text: "Password",
+                text: 'Password',
                 icon: Icons.lock,
                 isPassword: true,
                 controller: passWord,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return "Vui lòng nhập mật khẩu";
+                    return 'Vui long nhap mat khau';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               formInput(
-                text: "Confirm Password",
+                text: 'Confirm Password',
                 icon: Icons.lock,
                 isPassword: true,
                 controller: confirmPassword,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return "Vui lòng nhập lại mật khẩu";
+                    return 'Vui long nhap lai mat khau';
                   }
-                  if (v == confirmPassword.text.trim()) {
-                    return "Mật khẩu nhập lại không đúng";
+                  if (v != passWord.text.trim()) {
+                    return 'Mat khau nhap lai khong dung';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 30),
-              buttonFull(
-                text: Mytext.textSignUp,
-                func: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    //Xử lý tạo tài khoản
-                  }
-                },
-              ),
+              const SizedBox(height: 30),
+              if (isLoading)
+                const CircularProgressIndicator()
+              else
+                buttonFull(text: Mytext.textSignUp, func: _register),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Already have a account?",
+                  const Text(
+                    'Already have a account?',
                     style: TextStyle(color: Colors.grey),
                   ),
                   TextButton(
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, AppRoute.signin);
                     },
-                    child: Text(
-                      "Sign in",
+                    child: const Text(
+                      'Sign in',
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),

@@ -174,17 +174,12 @@ class _LibraryBookItem extends StatelessWidget {
           value: 1,
           total: book.pageCount > 0 ? book.pageCount : 1,
           title: book.title,
+          bookId: book.id,
           localFilePath: book.localFilePath,
           webReaderLink: book.webReaderLink,
           previewLink: book.previewLink,
 
           // Fallback demo nếu sách chưa có file tải thật và cũng chưa có link đọc.
-          assetPath:
-              book.localFilePath.trim().isEmpty &&
-                  book.webReaderLink.trim().isEmpty &&
-                  book.previewLink.trim().isEmpty
-              ? 'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt'
-              : null,
         ),
       ),
     );
