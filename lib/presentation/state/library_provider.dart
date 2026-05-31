@@ -74,8 +74,16 @@ class LibraryProvider extends ChangeNotifier {
   }
 
   Future<void> addRemoteBook(Book book, {int userId = 1}) async {
-    final bookId = int.tryParse(book.id);
-    if (bookId == null) return;
+    var bookId = int.tryParse(book.id);
+    if (bookId == null) {
+      final importedBook = await _libraryApi.importGoogleBook(book.id);
+      bookId = int.tryParse(importedBook.id);
+    }
+
+    if (bookId == null) {
+      throw Exception('Không thể xác định mã sách để thêm vào tủ sách.');
+    }
+
     await _libraryApi.addBook(bookId, userId: userId);
   }
 

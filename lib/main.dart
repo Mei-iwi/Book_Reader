@@ -8,6 +8,7 @@ import 'package:book_reader/data/datasources/remote/api/google_books_api.dart';
 import 'package:book_reader/data/datasources/remote/api/library_api.dart';
 import 'package:book_reader/data/datasources/remote/api/membership_api.dart';
 import 'package:book_reader/domain/repositories/auth_repository_impl.dart';
+import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/domain/repositories/book_repository_impl.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
@@ -37,6 +38,7 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        Provider<BookRepository>.value(value: bookRepository),
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
         ChangeNotifierProvider(create: (_) => HomeBookProvider(bookRepository)),
         ChangeNotifierProvider(create: (context) => NewsProvider()),

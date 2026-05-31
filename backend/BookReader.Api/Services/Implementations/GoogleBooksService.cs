@@ -39,7 +39,7 @@ public class GoogleBooksService : IGoogleBooksService
         var root = await GetJsonAsync(url);
         if (root == null)
         {
-            return ApiResponse<List<BookDto>>.Fail("Cannot read Google Books response.");
+            return ApiResponse<List<BookDto>>.Ok(new List<BookDto>(), "Google Books is unavailable or rate limited.");
         }
 
         var books = new List<BookDto>();
@@ -64,14 +64,26 @@ public class GoogleBooksService : IGoogleBooksService
 
     private async Task<JsonElement?> GetJsonAsync(string url)
     {
-        var response = await _httpClient.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            using var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            return JsonDocument.Parse(json).RootElement.Clone();
+        }
+        catch
         {
             return null;
         }
-
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonDocument.Parse(json).RootElement.Clone();
     }
 
     private string AddApiKey(string url)
