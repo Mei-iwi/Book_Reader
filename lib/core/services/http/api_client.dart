@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
@@ -86,6 +88,8 @@ class ApiClient {
     final uri = Uri.parse(
       '$baseUrl$endpoint',
     ).replace(queryParameters: queryParameters);
+    debugPrint('API $method $uri');
+
     final headers = <String, String>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -97,12 +101,22 @@ class ApiClient {
     }
 
     final encodedBody = body == null ? null : jsonEncode(body);
-    final response = switch (method) {
-      'POST' => await http.post(uri, headers: headers, body: encodedBody),
-      'PUT' => await http.put(uri, headers: headers, body: encodedBody),
-      'DELETE' => await http.delete(uri, headers: headers),
-      _ => await http.get(uri, headers: headers),
-    };
+    late final http.Response response;
+
+    try {
+      response = await (switch (method) {
+        'POST' => http.post(uri, headers: headers, body: encodedBody),
+        'PUT' => http.put(uri, headers: headers, body: encodedBody),
+        'DELETE' => http.delete(uri, headers: headers),
+        _ => http.get(uri, headers: headers),
+      }).timeout(const Duration(seconds: 20));
+    } on SocketException {
+      throw Exception('Không thể kết nối backend. Hãy kiểm tra mạng hoặc server.');
+    } on HttpException {
+      throw Exception('Lỗi HTTP khi gọi backend.');
+    } on FormatException {
+      throw Exception('Dữ liệu backend trả về không hợp lệ.');
+    }
 
     final decoded = response.body.trim().isEmpty
         ? null

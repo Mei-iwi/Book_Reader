@@ -33,9 +33,13 @@ class GoogleBooksApi {
   }
 
   Future<BookModel> getBookDetail(String bookId) async {
+    final endpoint = int.tryParse(bookId) == null
+        ? '${ApiConstants.books}/google/$bookId'
+        : '${ApiConstants.books}/$bookId';
+
     final data = await _apiClient.get(
       ApiConstants.backendBaseUrl,
-      '${ApiConstants.books}/$bookId',
+      endpoint,
     );
     return BookModel.fromBackendJson(data as Map<String, dynamic>);
   }

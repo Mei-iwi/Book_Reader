@@ -29,6 +29,14 @@ class LibraryApi {
     );
   }
 
+  Future<BookModel> importGoogleBook(String googleBookId) async {
+    final data = await _apiClient.post(
+      ApiConstants.backendBaseUrl,
+      '${ApiConstants.books}/import-google/$googleBookId',
+    );
+    return BookModel.fromBackendJson(data as Map<String, dynamic>);
+  }
+
   Future<void> removeBook(int bookId, {int? userId}) async {
     await _apiClient.delete(
       ApiConstants.backendBaseUrl,
