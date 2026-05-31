@@ -112,6 +112,10 @@ class _Reader extends State<Reader> {
     if (_shouldUseWebView) {
       _initWebView();
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveProgress();
+    });
   }
 
   void _initWebView() {
@@ -240,6 +244,85 @@ class _Reader extends State<Reader> {
     }
   }
 
+  Future<void> _showBookmarksDialog() async {
+    final bookId = widget.bookId;
+    if (bookId == null || bookId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sach nay chua co ma sach de luu bookmark.'),
+        ),
+      );
+      return;
+    }
+
+    final bookmarks = await _bookmarkDao.getBookmarks(bookId);
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        if (bookmarks.isEmpty) {
+          return AlertDialog(
+            title: const Text('Bookmark'),
+            content: const Text('Chua co bookmark nao cho sach nay.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Dong'),
+              ),
+            ],
+          );
+        }
+
+        return AlertDialog(
+          title: const Text('Bookmark'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: bookmarks.length,
+              itemBuilder: (_, index) {
+                final bookmark = bookmarks[index];
+                final id = bookmark['id'] as int;
+                final page = bookmark['page'] as int? ?? 1;
+                final note = bookmark['note']?.toString() ?? '';
+
+                return ListTile(
+                  title: Text('Trang $page'),
+                  subtitle: note.isEmpty ? null : Text(note),
+                  trailing: IconButton(
+                    tooltip: 'Xoa bookmark',
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () async {
+                      await _bookmarkDao.deleteBookmark(id);
+                      if (!dialogContext.mounted) return;
+                      Navigator.pop(dialogContext);
+                      await _showBookmarksDialog();
+                    },
+                  ),
+                  onTap: () {
+                    Navigator.pop(dialogContext);
+                    if (!_shouldUseWebView) {
+                      setState(() {
+                        newvalue = page;
+                      });
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Dong'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showExitDialog() {
     final parentContext = context;
 
@@ -365,15 +448,16 @@ class _Reader extends State<Reader> {
           IconButton(
             tooltip: 'Bình luận',
             onPressed: () {
-               Navigator.push(
+              Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context)=>const BookDetailPage())
-                );
+                MaterialPageRoute(builder: (context) => const BookDetailPage()),
+              );
             },
             icon: const Icon(Icons.comment, color: Colors.blue),
           ),
           IconButton(
-            onPressed: () {},
+            tooltip: 'Bookmark',
+            onPressed: _showBookmarksDialog,
             icon: const Icon(Icons.more_vert, color: Colors.blue),
           ),
           const SizedBox(width: 10),

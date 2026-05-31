@@ -8,6 +8,11 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._authApi);
 
   @override
+  void setToken(String? token) {
+    _authApi.setToken(token);
+  }
+
+  @override
   Future<AppUser> login({required String email, required String password}) {
     return _authApi.login(email: email, password: password);
   }

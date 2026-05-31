@@ -20,7 +20,15 @@ class LibraryProvider extends ChangeNotifier {
       errMessage = null;
       notifyListeners();
 
-      offlineBooks = await _bookRepository.getOfflineBooks();
+      try {
+        remoteBooks = await _libraryApi.getLibrary(userId: 1);
+      } catch (e) {
+        debugPrint('LOAD REMOTE LIBRARY ERROR: $e');
+        remoteBooks = [];
+      }
+
+      final localBooks = await _bookRepository.getOfflineBooks();
+      offlineBooks = remoteBooks.isNotEmpty ? remoteBooks : localBooks;
 
       debugPrint('===== LIBRARY PROVIDER =====');
       debugPrint('Số sách đã lưu: ${offlineBooks.length}');
@@ -41,9 +49,16 @@ class LibraryProvider extends ChangeNotifier {
 
   Future<void> deleteOfflineBook(Book book) async {
     try {
+      try {
+        await removeRemoteBook(book);
+      } catch (e) {
+        debugPrint('DELETE REMOTE LIBRARY ERROR: $e');
+      }
+
       await _bookRepository.deleteOfflineBooks(book);
 
       offlineBooks.removeWhere((item) => item.id == book.id);
+      remoteBooks.removeWhere((item) => item.id == book.id);
 
       notifyListeners();
 

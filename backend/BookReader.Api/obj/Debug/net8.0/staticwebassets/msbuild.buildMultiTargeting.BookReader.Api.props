@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\BookReader.Api.props" />
-</Project>

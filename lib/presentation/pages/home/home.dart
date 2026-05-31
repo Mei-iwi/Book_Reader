@@ -106,7 +106,9 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
       if (books.isEmpty)
         const Padding(
           padding: EdgeInsets.all(12),
-          child: Text('Chưa có dữ liệu'),
+          child: Text(
+            'Khong tim thay sach hoac Google Books dang gioi han truy cap.',
+          ),
         )
       else
         SizedBox(

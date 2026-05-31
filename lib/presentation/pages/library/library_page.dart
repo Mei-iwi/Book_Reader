@@ -180,12 +180,6 @@ class _LibraryBookItem extends StatelessWidget {
           previewLink: book.previewLink,
 
           // Fallback demo nếu sách chưa có file tải thật và cũng chưa có link đọc.
-          assetPath:
-              book.localFilePath.trim().isEmpty &&
-                  book.webReaderLink.trim().isEmpty &&
-                  book.previewLink.trim().isEmpty
-              ? 'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt'
-              : null,
         ),
       ),
     );

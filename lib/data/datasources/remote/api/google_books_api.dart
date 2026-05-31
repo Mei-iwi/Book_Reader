@@ -14,18 +14,40 @@ class GoogleBooksApi {
     String? langRestrict,
     bool onlyFreeEbooks = false,
   }) async {
+    try {
+      final googleData = await _apiClient.get(
+        ApiConstants.backendBaseUrl,
+        ApiConstants.googleBooksSearch,
+        queryParameters: {
+          'keyword': keyword,
+          'startIndex': startIndex.toString(),
+          'maxResults': maxResult.toString(),
+          ...(langRestrict == null ? {} : {'langRestrict': langRestrict}),
+          'onlyFreeEbooks': onlyFreeEbooks.toString(),
+        },
+      );
+
+      final googleItems = googleData as List<dynamic>? ?? [];
+      if (googleItems.isNotEmpty) {
+        return googleItems
+            .map(
+              (item) => BookModel.fromBackendJson(item as Map<String, dynamic>),
+            )
+            .toList();
+      }
+    } catch (_) {
+      // Neu Google Books bi gioi han hoac loi mang, thu tim trong SQL Server.
+    }
+
     final data = await _apiClient.get(
       ApiConstants.backendBaseUrl,
-      ApiConstants.googleBooksSearch,
+      ApiConstants.books,
       queryParameters: {
         'keyword': keyword,
-        'startIndex': startIndex.toString(),
-        'maxResults': maxResult.toString(),
-        ...(langRestrict == null ? {} : {'langRestrict': langRestrict}),
-        'onlyFreeEbooks': onlyFreeEbooks.toString(),
+        'page': '1',
+        'pageSize': maxResult.toString(),
       },
     );
-
     final items = data as List<dynamic>? ?? [];
     return items
         .map((item) => BookModel.fromBackendJson(item as Map<String, dynamic>))
@@ -37,10 +59,7 @@ class GoogleBooksApi {
         ? '${ApiConstants.books}/google/$bookId'
         : '${ApiConstants.books}/$bookId';
 
-    final data = await _apiClient.get(
-      ApiConstants.backendBaseUrl,
-      endpoint,
-    );
+    final data = await _apiClient.get(ApiConstants.backendBaseUrl, endpoint);
     return BookModel.fromBackendJson(data as Map<String, dynamic>);
   }
 }
