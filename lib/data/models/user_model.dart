@@ -18,4 +18,14 @@ class UserModel extends AppUser {
       token: json['token']?.toString() ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'fullName': fullName,
+      'email': email,
+      'role': role,
+      'token': token,
+    };
+  }
 }

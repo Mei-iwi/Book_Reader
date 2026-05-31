@@ -1,4 +1,5 @@
 import 'package:book_reader/app.dart';
+import 'package:book_reader/core/services/local_storage/session_storage.dart';
 import 'package:book_reader/core/services/http/api_client.dart';
 import 'package:book_reader/data/datasources/local/dao/offline_book_dao.dart';
 import 'package:book_reader/data/datasources/local/file_cache/book_file_downloader.dart';
@@ -24,6 +25,7 @@ void main() {
   final googleBooksApi = GoogleBooksApi(apiClient);
   final libraryApi = LibraryApi(apiClient);
   final membershipApi = MembershipApi(apiClient);
+  final sessionStorage = SessionStorage();
 
   final appDatabase = AppDatabase.instance;
   final offlineBookDao = OfflineBookDao(appDatabase);
@@ -39,7 +41,9 @@ void main() {
     MultiProvider(
       providers: [
         Provider<BookRepository>.value(value: bookRepository),
-        ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(authRepository, sessionStorage),
+        ),
         ChangeNotifierProvider(create: (_) => HomeBookProvider(bookRepository)),
         ChangeNotifierProvider(create: (context) => NewsProvider()),
         ChangeNotifierProvider(

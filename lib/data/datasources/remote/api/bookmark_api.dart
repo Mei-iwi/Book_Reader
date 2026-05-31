@@ -19,4 +19,12 @@ class BookmarkApi {
       body: {'bookId': bookId, 'page': page, 'note': note},
     );
   }
+
+  Future<void> deleteBookmark(int bookmarkId, {int? userId}) async {
+    await _apiClient.delete(
+      ApiConstants.backendBaseUrl,
+      '${ApiConstants.bookmarks}/$bookmarkId',
+      queryParameters: userId == null ? null : {'userId': userId.toString()},
+    );
+  }
 }

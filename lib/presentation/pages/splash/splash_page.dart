@@ -1,5 +1,7 @@
 import 'package:book_reader/config/routes.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -12,9 +14,14 @@ class _SplashPage extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () async {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoute.login);
+      final loggedIn = await context.read<AuthProvider>().loadSession();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        loggedIn ? AppRoute.home : AppRoute.login,
+      );
     });
   }
 

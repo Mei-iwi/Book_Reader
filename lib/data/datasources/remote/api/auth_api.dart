@@ -7,6 +7,10 @@ class AuthApi {
 
   AuthApi(this._apiClient);
 
+  void setToken(String? token) {
+    _apiClient.setToken(token);
+  }
+
   Future<UserModel> login({
     required String email,
     required String password,

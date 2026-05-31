@@ -33,7 +33,7 @@ class BookmarkDao {
     final db = await _appDatabase.database;
     await db.delete(
       TableNames.bookmarks,
-      where: 'book_id = ?',
+      where: 'id = ?',
       whereArgs: [bookmarkId],
     );
   }

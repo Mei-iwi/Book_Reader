@@ -116,11 +116,6 @@ class _BookDetailContent extends StatelessWidget {
                     webReaderLink: book.webReaderLink,
                     previewLink: book.previewLink,
                     localFilePath: book.localFilePath,
-                    assetPath: book.webReaderLink.isEmpty &&
-                            book.previewLink.isEmpty &&
-                            book.localFilePath.isEmpty
-                        ? 'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt'
-                        : null,
                   ),
                 ),
               );

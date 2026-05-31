@@ -4,7 +4,9 @@ import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart'
 import 'package:book_reader/core/widgets/ShareWidgetProfile/item.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/wbook.dart';
 import 'package:book_reader/presentation/pages/profile/editprofile.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class Myprofile extends StatefulWidget {
   const Myprofile({super.key});
@@ -16,6 +18,14 @@ class Myprofile extends StatefulWidget {
 class _Myprofile extends State<Myprofile> {
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final fullName = currentUser?.fullName.trim().isNotEmpty == true
+        ? currentUser!.fullName
+        : 'Nguoi dung';
+    final email = currentUser?.email.trim().isNotEmpty == true
+        ? currentUser!.email
+        : 'Chua dang nhap';
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -104,7 +114,7 @@ class _Myprofile extends State<Myprofile> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              "Mai Nhật Cường",
+                              fullName,
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -114,7 +124,7 @@ class _Myprofile extends State<Myprofile> {
                         ),
                         //Dữ liệu mail hoặc số điện thoại
                         Text(
-                          "c2005vn@gmail.com",
+                          email,
                           style: TextStyle(
                             fontSize: 15,
                             fontStyle: FontStyle.italic,
@@ -127,8 +137,10 @@ class _Myprofile extends State<Myprofile> {
                         ElevatedButton(
                           onPressed: () {
                             Navigator.push(
-                              context, 
-                              MaterialPageRoute(builder: (context)=> const EditProfilePage())
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditProfilePage(),
+                              ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -141,6 +153,30 @@ class _Myprofile extends State<Myprofile> {
                             "Edit Profile",
                             style: TextStyle(
                               color: Color(0xFF313F58),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await context.read<AuthProvider>().logout();
+                            if (!context.mounted) return;
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              AppRoute.login,
+                              (_) => false,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade50,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                          ),
+                          child: const Text(
+                            "Dang xuat",
+                            style: TextStyle(
+                              color: Colors.red,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
