@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class formSearch extends StatefulWidget {
+class FormSearch extends StatefulWidget {
   final String text;
   final TextEditingController? controller;
   final VoidCallback func;
 
-  const formSearch({
+  const FormSearch({
     super.key,
     required this.text,
     required this.controller,
@@ -13,10 +13,10 @@ class formSearch extends StatefulWidget {
   });
 
   @override
-  State<StatefulWidget> createState() => _formSearch();
+  State<StatefulWidget> createState() => _FormSearch();
 }
 
-class _formSearch extends State<formSearch> {
+class _FormSearch extends State<FormSearch> {
   @override
   Widget build(BuildContext context) {
     return Container(

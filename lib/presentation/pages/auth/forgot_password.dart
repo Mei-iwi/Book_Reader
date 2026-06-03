@@ -1,7 +1,7 @@
 import 'package:book_reader/config/routes.dart';
-import 'package:book_reader/core/constants/myImages.dart';
-import 'package:book_reader/core/constants/myText.dart';
-import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
+import 'package:book_reader/core/constants/my_images.dart';
+import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/ShareWidgetAuth/banner.dart';
@@ -32,7 +32,7 @@ class _Forgotpassword extends State<Forgotpassword> {
           children: [
             myBanner(urlBanner: Myimages.myBanner, text: Mytext.forgotPassword),
             SizedBox(height: 70),
-            formInput(
+            FormInput(
               text: "Enter your phone or Email",
               icon: Icons.mail,
               isPassword: false,

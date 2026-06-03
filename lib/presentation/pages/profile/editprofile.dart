@@ -1,4 +1,8 @@
+import 'package:book_reader/data/datasources/local/dao/profile_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -16,7 +20,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // Biến trạng thái ẩn/hiện mật khẩu
   bool _obscurePassword = true;
@@ -25,11 +30,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Gán giá trị mặc định cho Name, Email, Phone như trong ảnh
-    _nameController.text = "Mai Nhật Cường";
-    _emailController.text = "c2005vn@gmail.com";
-    _phoneController.text = "0382057987";
-    // Password và Confirm Password để trống theo yêu cầu
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user != null) {
+      final dao = ProfileDao(AppDatabase.instance);
+      final profile = await dao.getProfile(user.userId.toString());
+      if (profile != null) {
+        setState(() {
+          _nameController.text = profile['full_name'] ?? user.fullName;
+          _emailController.text = profile['email'] ?? user.email;
+          _phoneController.text = ''; // Add to db if needed
+        });
+      } else {
+        setState(() {
+          _nameController.text = user.fullName;
+          _emailController.text = user.email;
+        });
+      }
+    }
   }
 
   @override
@@ -43,19 +64,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
-  void _onSavePressed() {
-    // Bỏ focus để ẩn bàn phím
+  Future<void> _onSavePressed() async {
     FocusScope.of(context).unfocus();
 
-    // Kiểm tra tính hợp lệ của Form
     if (_formKey.currentState!.validate()) {
-      // Nếu hợp lệ, xử lý lưu dữ liệu ở đây
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lưu thông tin thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        final dao = ProfileDao(AppDatabase.instance);
+        await dao.saveProfile(
+          id: user.userId.toString(),
+          fullName: _nameController.text,
+          email: _emailController.text,
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lưu thông tin thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -93,7 +124,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       top: 40, // Căn lề an toàn cho tai thỏ
                       left: 10,
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.black87,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ),
@@ -108,17 +142,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               border: Border.all(color: Colors.white, width: 3),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 10,
                                   offset: const Offset(0, 5),
-                                )
+                                ),
                               ],
                             ),
                             child: const CircleAvatar(
                               radius: 50,
                               // Dùng ảnh cỏ 4 lá tương tự mockup (bạn thay bằng link thật hoặc Asset)
                               backgroundImage: NetworkImage(
-                                  'https://cdn.pixabay.com/photo/2013/07/12/17/00/four-leaf-clover-151042_1280.png'),
+                                'https://cdn.pixabay.com/photo/2013/07/12/17/00/four-leaf-clover-151042_1280.png',
+                              ),
                               backgroundColor: Colors.green,
                             ),
                           ),
@@ -130,7 +165,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             },
                             child: Row(
                               children: const [
-                                Icon(Icons.edit_outlined, size: 16, color: Colors.black87),
+                                Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: Colors.black87,
+                                ),
                                 SizedBox(width: 4),
                                 Text(
                                   "Edit avatar",
@@ -152,7 +191,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               // --- PHẦN FORM NHẬP LIỆU ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 10.0,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -206,7 +248,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         },
                         hintText: 'Nhập lại mật khẩu',
                         validator: (value) {
-                          if (_passwordController.text.isNotEmpty && value != _passwordController.text) {
+                          if (_passwordController.text.isNotEmpty &&
+                              value != _passwordController.text) {
                             return 'Mật khẩu không khớp!';
                           }
                           return null;
@@ -218,10 +261,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ElevatedButton(
                         onPressed: _onSavePressed,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFCBE4F9), // Màu xanh nhạt của nút
+                          backgroundColor: const Color(
+                            0xFFCBE4F9,
+                          ), // Màu xanh nhạt của nút
                           foregroundColor: Colors.black,
                           elevation: 3,
-                          shadowColor: Colors.grey.withOpacity(0.5),
+                          shadowColor: Colors.grey.withValues(alpha: 0.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -267,7 +312,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       style: const TextStyle(color: Colors.black87, fontSize: 15),
       decoration: InputDecoration(
         // Căn lề chữ bên trong ô
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         // Chữ tiền tố (VD: "Name: ")
         prefixIcon: Padding(
           padding: const EdgeInsets.only(left: 16, right: 8),
@@ -302,7 +350,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Viền khi ở trạng thái bình thường
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF5A4FCF), width: 1.2), // Màu viền tím đậm giống ảnh
+          borderSide: const BorderSide(
+            color: Color(0xFF5A4FCF),
+            width: 1.2,
+          ), // Màu viền tím đậm giống ảnh
         ),
         // Viền khi đang click vào để gõ
         focusedBorder: OutlineInputBorder(

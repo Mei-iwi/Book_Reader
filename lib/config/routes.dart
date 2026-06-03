@@ -1,9 +1,9 @@
-import 'package:book_reader/presentation/pages/auth/ForgotPassword.dart';
-import 'package:book_reader/presentation/pages/auth/Login.dart';
-import 'package:book_reader/presentation/pages/auth/NewPassword.dart';
-import 'package:book_reader/presentation/pages/auth/SignIn.dart';
-import 'package:book_reader/presentation/pages/auth/SignUp.dart';
-import 'package:book_reader/presentation/pages/auth/VerifyInfo.dart';
+import 'package:book_reader/presentation/pages/auth/forgot_password.dart';
+import 'package:book_reader/presentation/pages/auth/login.dart';
+import 'package:book_reader/presentation/pages/auth/new_password.dart';
+import 'package:book_reader/presentation/pages/auth/sign_in.dart';
+import 'package:book_reader/presentation/pages/auth/sign_up.dart';
+import 'package:book_reader/presentation/pages/auth/verify_info.dart';
 import 'package:book_reader/presentation/pages/book_detail/book_detail_page.dart';
 import 'package:book_reader/presentation/pages/home/homescreen.dart';
 import 'package:book_reader/presentation/pages/membership/membership_package_page.dart';

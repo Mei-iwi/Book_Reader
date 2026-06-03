@@ -41,8 +41,10 @@ class MembershipApi {
     );
     final items = data as List<dynamic>? ?? [];
     return items
-        .map((item) =>
-            MembershipPackageModel.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) =>
+              MembershipPackageModel.fromJson(item as Map<String, dynamic>),
+        )
         .toList();
   }
 

@@ -1,8 +1,8 @@
 import 'package:book_reader/config/routes.dart';
-import 'package:book_reader/core/constants/myImages.dart';
-import 'package:book_reader/core/constants/myText.dart';
+import 'package:book_reader/core/constants/my_images.dart';
+import 'package:book_reader/core/constants/my_text.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
-import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
@@ -65,7 +65,7 @@ class _Signup extends State<Signup> {
             children: [
               myBanner(urlBanner: Myimages.myBanner, text: Mytext.textSignUp),
               const SizedBox(height: 30),
-              formInput(
+              FormInput(
                 text: 'Full name',
                 icon: Icons.people_alt,
                 isPassword: false,
@@ -78,7 +78,7 @@ class _Signup extends State<Signup> {
                 },
               ),
               const SizedBox(height: 30),
-              formInput(
+              FormInput(
                 text: 'Phone or Email',
                 icon: Icons.lock,
                 isPassword: false,
@@ -91,7 +91,7 @@ class _Signup extends State<Signup> {
                 },
               ),
               const SizedBox(height: 30),
-              formInput(
+              FormInput(
                 text: 'Password',
                 icon: Icons.lock,
                 isPassword: true,
@@ -104,7 +104,7 @@ class _Signup extends State<Signup> {
                 },
               ),
               const SizedBox(height: 30),
-              formInput(
+              FormInput(
                 text: 'Confirm Password',
                 icon: Icons.lock,
                 isPassword: true,

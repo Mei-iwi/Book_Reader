@@ -15,9 +15,11 @@ class LibraryApi {
     );
     final items = data as List<dynamic>? ?? [];
     return items
-        .map((item) => BookModel.fromBackendJson(
-              (item as Map<String, dynamic>)['book'] as Map<String, dynamic>,
-            ))
+        .map(
+          (item) => BookModel.fromBackendJson(
+            (item as Map<String, dynamic>)['book'] as Map<String, dynamic>,
+          ),
+        )
         .toList();
   }
 

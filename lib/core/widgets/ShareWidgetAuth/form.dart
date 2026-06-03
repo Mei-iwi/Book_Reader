@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class formInput extends StatefulWidget {
+class FormInput extends StatefulWidget {
   final String text;
   final IconData icon;
   final bool isPassword;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
 
-  const formInput({
+  const FormInput({
     super.key,
     required this.text,
     required this.icon,
@@ -17,10 +17,10 @@ class formInput extends StatefulWidget {
   });
 
   @override
-  State<StatefulWidget> createState() => _formInput();
+  State<StatefulWidget> createState() => _FormInput();
 }
 
-class _formInput extends State<formInput> {
+class _FormInput extends State<FormInput> {
   bool _isHide = true;
   @override
   Widget build(BuildContext context) {
