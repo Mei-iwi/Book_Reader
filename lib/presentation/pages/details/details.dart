@@ -1,4 +1,4 @@
-import 'package:book_reader/core/widgets/ShareFunction/checkImage.dart';
+import 'package:book_reader/core/widgets/ShareFunction/check_image.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:flutter/material.dart';
 
@@ -92,19 +92,19 @@ class _Details extends State<Details> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  More(
+                  more(
                     icon: Icons.star,
                     color: Colors.amber,
                     number: 5.0,
                     content: 'RATING',
                   ),
-                  More(
+                  more(
                     icon: Icons.remove_red_eye,
                     color: Colors.grey,
                     number: 72,
                     content: 'Views',
                   ),
-                  More(
+                  more(
                     icon: Icons.file_download_outlined,
                     color: Colors.grey,
                     number: 10,
@@ -156,7 +156,7 @@ class _Details extends State<Details> {
   }
 }
 
-Widget More({
+Widget more({
   required IconData icon,
   required Color color,
   required double number,

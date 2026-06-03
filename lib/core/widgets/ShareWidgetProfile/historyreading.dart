@@ -1,4 +1,4 @@
-import 'package:book_reader/core/widgets/ShareFunction/checkImage.dart';
+import 'package:book_reader/core/widgets/ShareFunction/check_image.dart';
 import 'package:flutter/material.dart';
 
 Widget bookReading({

@@ -92,7 +92,10 @@ class _CategoryPageState extends State<CategoryPage> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.red.withOpacity(0.4), width: 1),
+          border: Border.all(
+            color: Colors.red.withValues(alpha: 0.4),
+            width: 1,
+          ),
         ),
         child: Center(
           child: Text(
@@ -117,7 +120,7 @@ class _CategoryPageState extends State<CategoryPage> {
         color: const Color(0xFFE0F7FA), // Màu xanh nhạt bám sát ảnh thiết kế
         borderRadius: BorderRadius.circular(35),
         border: Border.all(
-          color: Colors.red.withOpacity(0.2), // Viền đỏ nhạt theo yêu cầu
+          color: Colors.red.withValues(alpha: 0.2), // Viền đỏ nhạt theo yêu cầu
         ),
       ),
       child: InkWell(

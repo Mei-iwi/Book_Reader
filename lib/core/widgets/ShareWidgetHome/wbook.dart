@@ -1,4 +1,4 @@
-import 'package:book_reader/core/widgets/ShareFunction/checkImage.dart';
+import 'package:book_reader/core/widgets/ShareFunction/check_image.dart';
 import 'package:book_reader/presentation/pages/details/details.dart';
 import 'package:flutter/material.dart';
 
@@ -29,7 +29,7 @@ Widget wbook({
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               offset: Offset(2, 4),
               blurRadius: 12,
             ),
@@ -80,7 +80,7 @@ void showBookSnackBar(
                 decoration: BoxDecoration(
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       offset: Offset(2, 4),
                       blurRadius: 12,
                     ),

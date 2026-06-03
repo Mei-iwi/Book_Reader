@@ -2,9 +2,10 @@ import 'package:book_reader/presentation/state/news_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:book_reader/data/models/news_model.dart';
 
 class NewsPage extends StatefulWidget {
-  const NewsPage({Key? key}) : super(key: key);
+  const NewsPage({super.key});
 
   @override
   State<NewsPage> createState() => _NewsPageState();
@@ -36,7 +37,11 @@ class _NewsPageState extends State<NewsPage> {
         elevation: 0,
         title: const Text(
           'News',
-          style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -44,7 +49,10 @@ class _NewsPageState extends State<NewsPage> {
         children: [
           // Thanh tìm kiếm
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
@@ -53,18 +61,21 @@ class _NewsPageState extends State<NewsPage> {
               ),
               child: TextField(
                 controller: _searchController,
-                onChanged: _onSearchChanged, 
+                onChanged: _onSearchChanged,
                 decoration: InputDecoration(
                   hintText: 'Search news...',
                   hintStyle: TextStyle(color: Colors.grey.shade400),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   suffixIcon: const Icon(Icons.search, color: Colors.blue),
                 ),
               ),
             ),
           ),
-          
+
           // Danh sách bài viết
           Expanded(
             child: Consumer<NewsProvider>(
@@ -72,20 +83,31 @@ class _NewsPageState extends State<NewsPage> {
                 if (provider.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 if (provider.errorMessage != null) {
-                  return Center(child: Text(provider.errorMessage!, style: const TextStyle(color: Colors.red)));
+                  return Center(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
                 }
 
                 if (provider.displayNews.isEmpty) {
                   return Center(
-                    child: Text('Không tìm thấy bài viết nào.', style: TextStyle(color: Colors.grey.shade500)),
+                    child: Text(
+                      'Không tìm thấy bài viết nào.',
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ),
                   );
                 }
 
                 return ListView.builder(
                   itemCount: provider.displayNews.length,
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   itemBuilder: (context, index) {
                     final news = provider.displayNews[index];
                     return _buildNewsCard(news);
@@ -99,14 +121,17 @@ class _NewsPageState extends State<NewsPage> {
     );
   }
 
-  Widget _buildNewsCard(news) { 
+  Widget _buildNewsCard(NewsModel news) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: GestureDetector(
         onTap: () async {
           final uri = Uri.parse(news.link);
           // Hàm mở bài viết LitHub bằng trình duyệt bên ngoài hoặc WebView
-          if (await canLaunchUrl(uri)) {
+          final canLaunch = await canLaunchUrl(uri);
+          if (!context.mounted) return;
+
+          if (canLaunch) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -132,7 +157,7 @@ class _NewsPageState extends State<NewsPage> {
                   : Icon(Icons.category, color: Colors.grey.shade400, size: 30),
             ),
             const SizedBox(width: 16),
-            
+
             // Nội dung Text
             Expanded(
               child: Column(
@@ -140,14 +165,22 @@ class _NewsPageState extends State<NewsPage> {
                 children: [
                   Text(
                     news.title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     news.description,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.3),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                      height: 1.3,
+                    ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),

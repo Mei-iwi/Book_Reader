@@ -16,10 +16,7 @@ class ReadingProgressApi {
       ApiConstants.backendBaseUrl,
       '${ApiConstants.readingProgress}/$bookId',
       queryParameters: userId == null ? null : {'userId': userId.toString()},
-      body: {
-        'currentPage': currentPage,
-        'progressPercent': progressPercent,
-      },
+      body: {'currentPage': currentPage, 'progressPercent': progressPercent},
     );
   }
 }
