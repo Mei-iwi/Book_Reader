@@ -111,7 +111,9 @@ class ApiClient {
         _ => http.get(uri, headers: headers),
       }).timeout(const Duration(seconds: 20));
     } on SocketException {
-      throw Exception('Không thể kết nối backend. Hãy kiểm tra mạng hoặc server.');
+      throw Exception(
+        'Không thể kết nối backend. Hãy kiểm tra mạng hoặc server.',
+      );
     } on HttpException {
       throw Exception('Lỗi HTTP khi gọi backend.');
     } on FormatException {

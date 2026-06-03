@@ -1,7 +1,10 @@
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/domain/entities/book.dart';
+import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,6 +35,13 @@ class _LibraryPageState extends State<LibraryPage> {
           'Download',
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_upload),
+            tooltip: 'Import Book',
+            onPressed: () => _importBook(context, provider),
+          ),
+        ],
       ),
       body: _buildBody(provider),
     );
@@ -67,6 +77,58 @@ class _LibraryPageState extends State<LibraryPage> {
         },
       ),
     );
+  }
+
+  Future<void> _importBook(
+    BuildContext context,
+    LibraryProvider provider,
+  ) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'epub', 'txt'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final filePath = result.files.single.path!;
+        final file = File(filePath);
+        final fileName = result.files.single.name;
+
+        final newBook = Book(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: fileName,
+          authors: ['Local Import'],
+          description: 'Imported from device',
+          thumbnailUrl: '',
+          categories: ['Local'],
+          pageCount: 1,
+          language: 'vi',
+          previewLink: '',
+          webReaderLink: '',
+          pdfDownloadLink: '',
+          epubDownloadLink: '',
+          source: 'local_import',
+          localFilePath: file.path,
+          coverLocalPath: '',
+          isDownloaded: true,
+        );
+
+        final repo = context.read<BookRepository>();
+        await repo.saveBookOffline(newBook);
+        await provider.loadOfflineBooks();
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Import thành công!')));
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi khi import file: $e')));
+      }
+    }
   }
 }
 
@@ -153,7 +215,7 @@ class _LibraryBookItem extends StatelessWidget {
       return Image.network(
         thumbnail.replaceFirst('http://', 'https://'),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
+        errorBuilder: (context, error, stackTrace) {
           return _defaultCover();
         },
       );

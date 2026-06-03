@@ -6,12 +6,12 @@ import 'package:http/http.dart' as http;
 
 class NewsProvider extends ChangeNotifier {
   // Base URL của LitHub
-  final String _baseUrl = 'https://lithub.com'; 
+  final String _baseUrl = 'https://lithub.com';
   final String _endpoint = '/wp-json/wp/v2/posts';
 
   bool isLoading = false;
   String? errorMessage;
-  
+
   List<NewsModel> _allNews = [];
   List<NewsModel> displayNews = [];
 
@@ -23,16 +23,15 @@ class NewsProvider extends ChangeNotifier {
       final uri = Uri.parse('$_baseUrl$_endpoint?per_page=15');
       final res = await http.get(uri);
       if (res.statusCode == 200) {
-         final List<dynamic> data = jsonDecode(res.body);
-         _allNews = data.map((json) => NewsModel.fromJson(json)).toList();
-         displayNews = List.from(_allNews);
+        final List<dynamic> data = jsonDecode(res.body);
+        _allNews = data.map((json) => NewsModel.fromJson(json)).toList();
+        displayNews = List.from(_allNews);
       } else {
-         throw Exception('Lỗi server');
+        throw Exception('Lỗi server');
       }
-      
     } catch (e) {
       errorMessage = 'Không thể tải tin tức từ LitHub. Vui lòng kiểm tra mạng.';
-      print(e);
+      debugPrint(e.toString());
     } finally {
       isLoading = false;
       notifyListeners();
@@ -45,8 +44,8 @@ class NewsProvider extends ChangeNotifier {
     } else {
       final query = keyword.toLowerCase();
       displayNews = _allNews.where((news) {
-        return news.title.toLowerCase().contains(query) || 
-               news.description.toLowerCase().contains(query);
+        return news.title.toLowerCase().contains(query) ||
+            news.description.toLowerCase().contains(query);
       }).toList();
     }
     notifyListeners();

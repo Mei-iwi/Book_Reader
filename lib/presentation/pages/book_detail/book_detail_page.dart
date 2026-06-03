@@ -2,6 +2,8 @@ import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
+import 'package:book_reader/data/datasources/local/dao/favorite_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,18 +17,45 @@ class BookDetailPage extends StatefulWidget {
 
 class _BookDetailPageState extends State<BookDetailPage> {
   late Future<Book> _bookFuture;
+  bool _isFavorite = false;
+  String _bookId = '';
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final bookId = ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
-    _bookFuture = context.read<BookRepository>().getBookDetail(bookId);
+    _bookId = ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
+    _bookFuture = context.read<BookRepository>().getBookDetail(_bookId);
+    _checkFavorite();
+  }
+
+  Future<void> _checkFavorite() async {
+    if (_bookId.isNotEmpty) {
+      final isFav = await FavoriteDao(AppDatabase.instance).isFavorite(_bookId);
+      if (mounted)
+        setState(() {
+          _isFavorite = isFav;
+        });
+    }
+  }
+
+  Future<void> _toggleFavorite(Book book) async {
+    final dao = FavoriteDao(AppDatabase.instance);
+    if (_isFavorite) {
+      await dao.removeFavorite(book.id);
+    } else {
+      await dao.addFavorite(
+        bookId: book.id,
+        title: book.title,
+        author: book.authors.isNotEmpty ? book.authors.first : 'Unknown',
+        coverUrl: book.thumbnailUrl,
+      );
+    }
+    await _checkFavorite();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Details'), centerTitle: true),
       body: FutureBuilder<Book>(
         future: _bookFuture,
         builder: (context, snapshot) {
@@ -51,7 +80,22 @@ class _BookDetailPageState extends State<BookDetailPage> {
             return const Center(child: Text('Không tìm thấy sách.'));
           }
 
-          return _BookDetailContent(book: book);
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Book Details'),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.red,
+                  ),
+                  onPressed: () => _toggleFavorite(book),
+                ),
+              ],
+            ),
+            body: _BookDetailContent(book: book),
+          );
         },
       ),
     );

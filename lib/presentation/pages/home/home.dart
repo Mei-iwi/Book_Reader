@@ -38,7 +38,7 @@ class _Home extends State<Home> {
     final provider = context.watch<HomeBookProvider>();
     return Scaffold(
       appBar: AppBar(
-        title: formSearch(
+        title: FormSearch(
           text: 'Search',
           controller: search,
           func: () {
