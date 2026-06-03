@@ -19,14 +19,15 @@ class NewsModel {
     // Hàm phụ để xóa thẻ HTML khỏi text
     String parseHtmlString(String htmlString) {
       final document = parse(htmlString);
-      final String parsedString = parse(document.body?.text).documentElement?.text ?? '';
+      final String parsedString =
+          parse(document.body?.text).documentElement?.text ?? '';
       return parsedString.trim();
     }
 
     return NewsModel(
       id: json['id']?.toString() ?? '',
       // LitHub bọc tiêu đề và mô tả trong field 'rendered'
-      title: parseHtmlString(json['title']?['rendered'] ?? 'No Title'), 
+      title: parseHtmlString(json['title']?['rendered'] ?? 'No Title'),
       description: parseHtmlString(json['excerpt']?['rendered'] ?? ''),
       // Lấy ảnh thumbnail từ trường jetpack_featured_media_url
       imageUrl: json['jetpack_featured_media_url']?.toString() ?? '',

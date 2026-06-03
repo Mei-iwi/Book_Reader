@@ -1,8 +1,8 @@
 import 'package:book_reader/config/routes.dart';
-import 'package:book_reader/core/constants/myImages.dart';
-import 'package:book_reader/core/constants/myText.dart';
-import 'package:book_reader/core/widgets/ShareWidgetAuth/SigupOther.dart';
-import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
+import 'package:book_reader/core/constants/my_images.dart';
+import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/signup_other.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/ShareWidgetAuth/banner.dart';
 

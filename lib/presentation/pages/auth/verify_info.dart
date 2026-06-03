@@ -1,7 +1,7 @@
 import 'package:book_reader/config/routes.dart';
-import 'package:book_reader/core/constants/myImages.dart';
-import 'package:book_reader/core/constants/myText.dart';
-import 'package:book_reader/core/widgets/ShareWidgetAuth/buttonStyle.dart';
+import 'package:book_reader/core/constants/my_images.dart';
+import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/ShareWidgetAuth/banner.dart';
@@ -32,7 +32,7 @@ class _Verifyinfo extends State<Verifyinfo> {
           children: [
             myBanner(urlBanner: Myimages.myBanner, text: Mytext.vertification),
             SizedBox(height: 70),
-            formInput(
+            FormInput(
               text: "Enter Verification code",
               icon: Icons.key,
               isPassword: false,

@@ -450,7 +450,12 @@ class _Reader extends State<Reader> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const BookDetailPage()),
+                MaterialPageRoute(
+                  builder: (context) => CommentPage(
+                    bookId: widget.bookId ?? '',
+                    title: widget.title,
+                  ),
+                ),
               );
             },
             icon: const Icon(Icons.comment, color: Colors.blue),

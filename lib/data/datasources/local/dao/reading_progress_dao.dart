@@ -49,4 +49,12 @@ class ReadingProgressDao {
     if (maps.isEmpty) return null;
     return maps.first;
   }
+
+  Future<List<Map<String, dynamic>>> getAllProgress() async {
+    final db = await _appDatabase.database;
+    return await db.query(
+      TableNames.readingProgress,
+      orderBy: 'updated_at DESC',
+    );
+  }
 }

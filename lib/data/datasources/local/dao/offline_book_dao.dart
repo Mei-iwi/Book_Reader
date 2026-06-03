@@ -3,7 +3,6 @@ import 'package:book_reader/data/datasources/local/tables/table_names.dart';
 import 'package:book_reader/data/models/book_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite/sql.dart';
 
 class OfflineBookDao {
   final AppDatabase _appDatabase;

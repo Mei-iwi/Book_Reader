@@ -67,5 +67,36 @@ class AppDatabase {
       FOREIGN KEY(book_id) REFERENCES offline_books(id)
     )
   ''');
+
+    await db.execute('''
+    CREATE TABLE comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  ''');
+
+    await db.execute('''
+    CREATE TABLE user_profile (
+      id TEXT PRIMARY KEY,
+      full_name TEXT,
+      email TEXT,
+      avatar_path TEXT,
+      updated_at TEXT
+    )
+  ''');
+
+    await db.execute('''
+    CREATE TABLE favorites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      author TEXT,
+      cover_url TEXT,
+      created_at TEXT NOT NULL
+    )
+  ''');
   }
 }
