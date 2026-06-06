@@ -14,21 +14,32 @@ class LibraryProvider extends ChangeNotifier {
   List<Book> offlineBooks = [];
   List<Book> remoteBooks = [];
 
-  Future<void> loadOfflineBooks() async {
+  Future<void> loadOfflineBooks({int? userId}) async {
     try {
       isLoading = true;
       errMessage = null;
       notifyListeners();
 
-      try {
-        remoteBooks = await _libraryApi.getLibrary(userId: 1);
-      } catch (e) {
-        debugPrint('LOAD REMOTE LIBRARY ERROR: $e');
+      if (userId != null) {
+        try {
+          remoteBooks = await _libraryApi.getLibrary(userId: userId);
+        } catch (e) {
+          debugPrint('LOAD REMOTE LIBRARY ERROR: $e');
+          remoteBooks = [];
+        }
+      } else {
         remoteBooks = [];
       }
 
       final localBooks = await _bookRepository.getOfflineBooks();
-      offlineBooks = remoteBooks.isNotEmpty ? remoteBooks : localBooks;
+      final merged = <String, Book>{};
+      for (final book in remoteBooks) {
+        merged[book.id] = book;
+      }
+      for (final book in localBooks) {
+        merged[book.id] = book;
+      }
+      offlineBooks = merged.values.toList();
 
       debugPrint('===== LIBRARY PROVIDER =====');
       debugPrint('Số sách đã lưu: ${offlineBooks.length}');
@@ -47,12 +58,14 @@ class LibraryProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteOfflineBook(Book book) async {
+  Future<void> deleteOfflineBook(Book book, {int? userId}) async {
     try {
-      try {
-        await removeRemoteBook(book);
-      } catch (e) {
-        debugPrint('DELETE REMOTE LIBRARY ERROR: $e');
+      if (userId != null) {
+        try {
+          await removeRemoteBook(book, userId: userId);
+        } catch (e) {
+          debugPrint('DELETE REMOTE LIBRARY ERROR: $e');
+        }
       }
 
       await _bookRepository.deleteOfflineBooks(book);
@@ -73,7 +86,7 @@ class LibraryProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadRemoteLibrary({int userId = 1}) async {
+  Future<void> loadRemoteLibrary({required int userId}) async {
     try {
       isLoading = true;
       errMessage = null;
@@ -88,7 +101,7 @@ class LibraryProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addRemoteBook(Book book, {int userId = 1}) async {
+  Future<void> addRemoteBook(Book book, {required int userId}) async {
     var bookId = int.tryParse(book.id);
     if (bookId == null) {
       final importedBook = await _libraryApi.importGoogleBook(book.id);
@@ -102,7 +115,7 @@ class LibraryProvider extends ChangeNotifier {
     await _libraryApi.addBook(bookId, userId: userId);
   }
 
-  Future<void> removeRemoteBook(Book book, {int userId = 1}) async {
+  Future<void> removeRemoteBook(Book book, {required int userId}) async {
     final bookId = int.tryParse(book.id);
     if (bookId == null) return;
     await _libraryApi.removeBook(bookId, userId: userId);

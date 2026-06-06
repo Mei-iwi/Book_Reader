@@ -1,5 +1,6 @@
 import 'package:book_reader/data/datasources/local/dao/comment_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -55,6 +56,14 @@ class _CommentPageState extends State<CommentPage> {
       return;
     }
 
+    final maxLengthError = AppValidators.maxLength(text, 500, 'Binh luan');
+    if (maxLengthError != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(maxLengthError)));
+      return;
+    }
+
     if (widget.bookId.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -75,6 +84,7 @@ class _CommentPageState extends State<CommentPage> {
       content: text,
     );
 
+    if (!mounted) return;
     _commentController.clear();
     FocusScope.of(context).unfocus();
     await _loadComments();

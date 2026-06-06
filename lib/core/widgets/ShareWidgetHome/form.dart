@@ -29,6 +29,8 @@ class _FormSearch extends State<FormSearch> {
             height: 40,
             child: TextFormField(
               controller: widget.controller,
+              textInputAction: TextInputAction.search,
+              onFieldSubmitted: (_) => widget.func(),
               decoration: InputDecoration(
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(1000),

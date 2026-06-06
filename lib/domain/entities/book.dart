@@ -15,6 +15,7 @@ class Book {
   final String epubDownloadLink;
   final String localFilePath;
   final bool isDownloaded;
+  final bool isFree;
 
   const Book({
     required this.id,
@@ -33,5 +34,6 @@ class Book {
     this.epubDownloadLink = '',
     this.localFilePath = '',
     this.isDownloaded = false,
+    this.isFree = true,
   });
 }

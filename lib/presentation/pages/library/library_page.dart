@@ -2,6 +2,7 @@ import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -16,12 +17,16 @@ class LibraryPage extends StatefulWidget {
 }
 
 class _LibraryPageState extends State<LibraryPage> {
+  bool _showGrid = false;
+  String _selectedCategory = 'all';
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LibraryProvider>().loadOfflineBooks();
+      final userId = context.read<AuthProvider>().currentUser?.userId;
+      context.read<LibraryProvider>().loadOfflineBooks(userId: userId);
     });
   }
 
@@ -36,6 +41,11 @@ class _LibraryPageState extends State<LibraryPage> {
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: Icon(_showGrid ? Icons.view_list : Icons.grid_view),
+            tooltip: _showGrid ? 'Xem dang danh sach' : 'Xem dang luoi',
+            onPressed: () => setState(() => _showGrid = !_showGrid),
+          ),
           IconButton(
             icon: const Icon(Icons.file_upload),
             tooltip: 'Import Book',
@@ -65,17 +75,96 @@ class _LibraryPageState extends State<LibraryPage> {
       return const Center(child: Text('Chưa có sách đã lưu.'));
     }
 
-    return RefreshIndicator(
-      onRefresh: provider.loadOfflineBooks,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: provider.offlineBooks.length,
-        itemBuilder: (context, index) {
-          final book = provider.offlineBooks[index];
+    final userId = context.read<AuthProvider>().currentUser?.userId;
+    final categories = _categories(provider.offlineBooks);
+    final books = _filteredBooks(provider.offlineBooks);
 
-          return _LibraryBookItem(book: book, provider: provider);
-        },
+    return RefreshIndicator(
+      onRefresh: () => provider.loadOfflineBooks(userId: userId),
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _buildFilters(categories)),
+          if (books.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text('Khong co sach trong muc nay.')),
+            )
+          else if (_showGrid)
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.62,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final book = books[index];
+                  return _LibraryBookGridItem(book: book);
+                }, childCount: books.length),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList.builder(
+                itemCount: books.length,
+                itemBuilder: (context, index) {
+                  final book = books[index];
+                  return _LibraryBookItem(book: book, provider: provider);
+                },
+              ),
+            ),
+        ],
       ),
+    );
+  }
+
+  List<String> _categories(List<Book> books) {
+    final values = <String>{};
+    for (final book in books) {
+      for (final category in book.categories) {
+        final text = category.trim();
+        if (text.isNotEmpty) values.add(text);
+      }
+    }
+    return values.toList()..sort();
+  }
+
+  List<Book> _filteredBooks(List<Book> books) {
+    if (_selectedCategory == 'downloaded') {
+      return books.where((book) => book.isDownloaded).toList();
+    }
+    if (_selectedCategory == 'all') return books;
+    return books
+        .where((book) => book.categories.contains(_selectedCategory))
+        .toList();
+  }
+
+  Widget _buildFilters(List<String> categories) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          _filterChip('all', 'Tat ca'),
+          const SizedBox(width: 8),
+          _filterChip('downloaded', 'Downloaded'),
+          for (final category in categories) ...[
+            const SizedBox(width: 8),
+            _filterChip(category, category),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String value, String label) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _selectedCategory == value,
+      onSelected: (_) => setState(() => _selectedCategory = value),
     );
   }
 
@@ -84,6 +173,8 @@ class _LibraryPageState extends State<LibraryPage> {
     LibraryProvider provider,
   ) async {
     try {
+      final repo = context.read<BookRepository>();
+      final userId = context.read<AuthProvider>().currentUser?.userId;
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'epub', 'txt'],
@@ -113,9 +204,9 @@ class _LibraryPageState extends State<LibraryPage> {
           isDownloaded: true,
         );
 
-        final repo = context.read<BookRepository>();
         await repo.saveBookOffline(newBook);
-        await provider.loadOfflineBooks();
+        if (!mounted) return;
+        await provider.loadOfflineBooks(userId: userId);
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
@@ -237,9 +328,12 @@ class _LibraryBookItem extends StatelessWidget {
           total: book.pageCount > 0 ? book.pageCount : 1,
           title: book.title,
           bookId: book.id,
+          userId: context.read<AuthProvider>().currentUser?.userId,
           localFilePath: book.localFilePath,
           webReaderLink: book.webReaderLink,
           previewLink: book.previewLink,
+          pdfDownloadLink: book.pdfDownloadLink,
+          epubDownloadLink: book.epubDownloadLink,
 
           // Fallback demo nếu sách chưa có file tải thật và cũng chưa có link đọc.
         ),
@@ -248,6 +342,7 @@ class _LibraryBookItem extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final userId = context.read<AuthProvider>().currentUser?.userId;
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -270,12 +365,91 @@ class _LibraryBookItem extends StatelessWidget {
 
     if (shouldDelete != true) return;
 
-    await provider.deleteOfflineBook(book);
+    await provider.deleteOfflineBook(book, userId: userId);
 
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Đã xóa sách khỏi thư viện')));
+  }
+}
+
+class _LibraryBookGridItem extends StatelessWidget {
+  final Book book;
+
+  const _LibraryBookGridItem({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Reader(
+                value: 1,
+                total: book.pageCount > 0 ? book.pageCount : 1,
+                title: book.title,
+                bookId: book.id,
+                userId: context.read<AuthProvider>().currentUser?.userId,
+                localFilePath: book.localFilePath,
+                webReaderLink: book.webReaderLink,
+                previewLink: book.previewLink,
+                pdfDownloadLink: book.pdfDownloadLink,
+                epubDownloadLink: book.epubDownloadLink,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _coverImage()),
+              const SizedBox(height: 8),
+              Text(
+                book.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                book.authors.isNotEmpty ? book.authors.join(', ') : 'Unknown',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _coverImage() {
+    final thumbnail = book.thumbnailUrl.trim();
+    if (thumbnail.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          thumbnail.replaceFirst('http://', 'https://'),
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _defaultCover(),
+        ),
+      );
+    }
+    return _defaultCover();
+  }
+
+  Widget _defaultCover() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.asset(Templateimage.book1, fit: BoxFit.cover),
+    );
   }
 }

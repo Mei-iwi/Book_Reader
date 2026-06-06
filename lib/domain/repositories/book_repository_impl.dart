@@ -22,8 +22,16 @@ class BookRepositoryImpl implements BookRepository {
   }
 
   @override
-  Future<List<Book>> searchBooks(String keyword) {
-    return _googleBooksApi.searchBooks(keyword: keyword);
+  Future<List<Book>> searchBooks(
+    String keyword, {
+    bool onlyFreeEbooks = false,
+    int maxResults = 10,
+  }) {
+    return _googleBooksApi.searchBooks(
+      keyword: keyword,
+      maxResult: maxResults,
+      onlyFreeEbooks: onlyFreeEbooks,
+    );
   }
 
   @override
@@ -38,10 +46,20 @@ class BookRepositoryImpl implements BookRepository {
 
   @override
   Future<void> saveBookOffline(Book book) async {
-    String localFilePath = '';
+    String localFilePath = book.localFilePath;
 
     final hasEpub = book.epubDownloadLink.trim().isNotEmpty;
     final hasPdf = book.pdfDownloadLink.trim().isNotEmpty;
+
+    if (localFilePath.trim().isNotEmpty) {
+      final bookModel = BookModel.fromEntity(
+        book,
+        localFilePath: localFilePath,
+        isDownloaded: true,
+      );
+      await _offlineBookDao.insertOrUpdateBook(bookModel);
+      return;
+    }
 
     if (hasEpub) {
       localFilePath = await _bookFileDownloader.downloadBookFile(
@@ -60,7 +78,7 @@ class BookRepositoryImpl implements BookRepository {
     final bookModel = BookModel.fromEntity(
       book,
       localFilePath: localFilePath,
-      isDownloaded: localFilePath.isNotEmpty,
+      isDownloaded: localFilePath.isNotEmpty || book.isDownloaded,
     );
 
     await _offlineBookDao.insertOrUpdateBook(bookModel);

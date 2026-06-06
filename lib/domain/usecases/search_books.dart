@@ -10,6 +10,6 @@ class SearchBooks {
     if (keyword.trim().isEmpty) {
       return Future.value([]);
     }
-    return _repository.searchBooks(keyword.trim());
+    return _repository.searchBooks(keyword.trim(), onlyFreeEbooks: true);
   }
 }

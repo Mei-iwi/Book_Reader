@@ -45,4 +45,41 @@ class AuthApi {
     _apiClient.setToken(user.token);
     return user;
   }
+
+  Future<UserModel> updateProfile({
+    required String fullName,
+    required String email,
+    String? phoneNumber,
+    String? avatarUrl,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    final body = {
+      'fullName': fullName,
+      'email': email,
+      'phoneNumber': phoneNumber,
+      'avatarUrl': avatarUrl,
+      'password': password,
+      'confirmPassword': confirmPassword,
+    };
+
+    dynamic data;
+    try {
+      data = await _apiClient.put(
+        ApiConstants.backendBaseUrl,
+        ApiConstants.authMe,
+        body: body,
+      );
+    } catch (e) {
+      if (!e.toString().contains('405')) rethrow;
+      data = await _apiClient.post(
+        ApiConstants.backendBaseUrl,
+        ApiConstants.authMe,
+        body: body,
+      );
+    }
+    final user = UserModel.fromJson(data as Map<String, dynamic>);
+    _apiClient.setToken(user.token);
+    return user;
+  }
 }

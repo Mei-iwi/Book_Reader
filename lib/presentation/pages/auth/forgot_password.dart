@@ -1,6 +1,7 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
 import 'package:flutter/material.dart';
@@ -37,12 +38,7 @@ class _Forgotpassword extends State<Forgotpassword> {
               icon: Icons.mail,
               isPassword: false,
               controller: mail,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return "Vui lòng nhập Số điện thoại hoặc email đã đăng ký";
-                }
-                return null;
-              },
+              validator: AppValidators.emailOrPhone,
             ),
             SizedBox(height: 50),
             buttonFull(

@@ -30,4 +30,11 @@ public class AuthRepository : IAuthRepository
         await _context.SaveChangesAsync();
         return user;
     }
+
+    public async Task<AppUser> UpdateAsync(AppUser user)
+    {
+        _context.AppUsers.Update(user);
+        await _context.SaveChangesAsync();
+        return user;
+    }
 }
