@@ -18,6 +18,7 @@ class LibraryPage extends StatefulWidget {
 
 class _LibraryPageState extends State<LibraryPage> {
   bool _showGrid = false;
+  String _selectedCategory = 'all';
 
   @override
   void initState() {
@@ -75,32 +76,95 @@ class _LibraryPageState extends State<LibraryPage> {
     }
 
     final userId = context.read<AuthProvider>().currentUser?.userId;
+    final categories = _categories(provider.offlineBooks);
+    final books = _filteredBooks(provider.offlineBooks);
 
     return RefreshIndicator(
       onRefresh: () => provider.loadOfflineBooks(userId: userId),
-      child: _showGrid
-          ? GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.62,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: provider.offlineBooks.length,
-              itemBuilder: (context, index) {
-                final book = provider.offlineBooks[index];
-                return _LibraryBookGridItem(book: book);
-              },
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _buildFilters(categories)),
+          if (books.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text('Khong co sach trong muc nay.')),
             )
-          : ListView.builder(
+          else if (_showGrid)
+            SliverPadding(
               padding: const EdgeInsets.all(16),
-              itemCount: provider.offlineBooks.length,
-              itemBuilder: (context, index) {
-                final book = provider.offlineBooks[index];
-                return _LibraryBookItem(book: book, provider: provider);
-              },
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.62,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final book = books[index];
+                  return _LibraryBookGridItem(book: book);
+                }, childCount: books.length),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList.builder(
+                itemCount: books.length,
+                itemBuilder: (context, index) {
+                  final book = books[index];
+                  return _LibraryBookItem(book: book, provider: provider);
+                },
+              ),
             ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _categories(List<Book> books) {
+    final values = <String>{};
+    for (final book in books) {
+      for (final category in book.categories) {
+        final text = category.trim();
+        if (text.isNotEmpty) values.add(text);
+      }
+    }
+    return values.toList()..sort();
+  }
+
+  List<Book> _filteredBooks(List<Book> books) {
+    if (_selectedCategory == 'downloaded') {
+      return books.where((book) => book.isDownloaded).toList();
+    }
+    if (_selectedCategory == 'all') return books;
+    return books
+        .where((book) => book.categories.contains(_selectedCategory))
+        .toList();
+  }
+
+  Widget _buildFilters(List<String> categories) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          _filterChip('all', 'Tat ca'),
+          const SizedBox(width: 8),
+          _filterChip('downloaded', 'Downloaded'),
+          for (final category in categories) ...[
+            const SizedBox(width: 8),
+            _filterChip(category, category),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String value, String label) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _selectedCategory == value,
+      onSelected: (_) => setState(() => _selectedCategory = value),
     );
   }
 
@@ -268,6 +332,8 @@ class _LibraryBookItem extends StatelessWidget {
           localFilePath: book.localFilePath,
           webReaderLink: book.webReaderLink,
           previewLink: book.previewLink,
+          pdfDownloadLink: book.pdfDownloadLink,
+          epubDownloadLink: book.epubDownloadLink,
 
           // Fallback demo nếu sách chưa có file tải thật và cũng chưa có link đọc.
         ),
@@ -332,6 +398,8 @@ class _LibraryBookGridItem extends StatelessWidget {
                 localFilePath: book.localFilePath,
                 webReaderLink: book.webReaderLink,
                 previewLink: book.previewLink,
+                pdfDownloadLink: book.pdfDownloadLink,
+                epubDownloadLink: book.epubDownloadLink,
               ),
             ),
           );

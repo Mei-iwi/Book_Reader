@@ -32,7 +32,14 @@ class LibraryProvider extends ChangeNotifier {
       }
 
       final localBooks = await _bookRepository.getOfflineBooks();
-      offlineBooks = remoteBooks.isNotEmpty ? remoteBooks : localBooks;
+      final merged = <String, Book>{};
+      for (final book in remoteBooks) {
+        merged[book.id] = book;
+      }
+      for (final book in localBooks) {
+        merged[book.id] = book;
+      }
+      offlineBooks = merged.values.toList();
 
       debugPrint('===== LIBRARY PROVIDER =====');
       debugPrint('Số sách đã lưu: ${offlineBooks.length}');

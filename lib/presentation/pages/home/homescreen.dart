@@ -14,12 +14,6 @@ class Homescreen extends StatefulWidget {
 class _Homescreen extends State<Homescreen> {
   final search = TextEditingController();
   int _index = 0;
-  final List<Widget> _pages = [
-    Home(),
-    const LibraryPage(),
-    const NewsPage(),
-    Myprofile(),
-  ];
 
   final List<BottomNavigationBarItem> _navItems = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -39,11 +33,18 @@ class _Homescreen extends State<Homescreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      Home(onNavigateTab: (index) => setState(() => _index = index)),
+      const LibraryPage(),
+      const NewsPage(),
+      Myprofile(),
+    ];
+
     return Scaffold(
       drawer: Drawer(
         child: ListView(children: [ListTile(title: Text("Menu"))]),
       ),
-      body: IndexedStack(index: _index, children: _pages),
+      body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (i) => setState(() {

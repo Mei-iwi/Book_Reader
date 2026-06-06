@@ -10,7 +10,7 @@ Widget wbook({
 }) {
   return InkWell(
     onTap: () {
-      func;
+      func();
       showBookSnackBar(context, title: title, author: author, url: url);
     },
     child: Padding(

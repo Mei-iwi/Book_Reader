@@ -38,8 +38,6 @@ class OfflineBookDao {
 
     final maps = await db.query(
       TableNames.offlineBooks,
-      where: 'is_downloaded = ?',
-      whereArgs: [1],
       orderBy: 'downloaded_at DESC',
     );
 

@@ -10,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  final ValueChanged<int>? onNavigateTab;
+
+  const Home({super.key, this.onNavigateTab});
 
   @override
   State<StatefulWidget> createState() => _Home();
@@ -63,7 +65,70 @@ class _Home extends State<Home> {
         ],
       ),
       drawer: Drawer(
-        child: ListView(children: [ListTile(title: Text("Menu"))]),
+        child: ListView(
+          children: [
+            const DrawerHeader(
+              child: Text(
+                'Book Reader',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Trang chủ'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onNavigateTab?.call(0);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_library),
+              title: const Text('Thư viện'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onNavigateTab?.call(1);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.public),
+              title: const Text('Cộng đồng'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onNavigateTab?.call(2);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.workspace_premium),
+              title: const Text('Hội viên'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/membership');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onNavigateTab?.call(3);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Đăng xuất'),
+              onTap: () async {
+                await context.read<AuthProvider>().logout();
+                if (!context.mounted) return;
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (_) => false,
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.only(left: 10),
@@ -86,30 +151,64 @@ Widget _buildBody(HomeBookProvider provider) {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buiderBookSection(title: 'Continue...', books: provider.continueBooks),
-        _buiderBookSection(title: 'From Library', books: provider.libraryBooks),
-        _buiderBookSection(
-          title: 'Recommendations',
-          books: provider.recommendationBooks,
-        ),
+        if (provider.activeSearchKeyword.isNotEmpty) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Kết quả tìm kiếm: ${provider.activeSearchKeyword}',
+                  style: style(),
+                ),
+              ),
+              TextButton(
+                onPressed: provider.clearSearch,
+                child: const Text('Xóa'),
+              ),
+            ],
+          ),
+          _buiderBookSection(title: '', books: provider.searchResults),
+        ] else ...[
+          _buiderBookSection(
+            title: 'Continue...',
+            books: provider.continueBooks,
+            emptyMessage: 'Chua co sach dang doc tiep.',
+          ),
+          _buiderBookSection(
+            title: 'From Library',
+            books: provider.libraryBooks,
+            emptyMessage: 'Thu vien dang trong.',
+          ),
+          for (final entry in provider.recommendationSections.entries)
+            _buiderBookSection(
+              title: 'Recommendations - ${entry.key}',
+              books: entry.value,
+              emptyMessage:
+                  'Khong tai duoc sach mien phi tu Google Books cho muc nay.',
+            ),
+        ],
       ],
     ),
   );
 }
 
-Widget _buiderBookSection({required String title, required List<Book> books}) {
+Widget _buiderBookSection({
+  required String title,
+  required List<Book> books,
+  String emptyMessage =
+      'Khong tim thay sach hoac Google Books dang gioi han truy cap.',
+}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(title, style: style()),
-      const SizedBox(height: 8),
+      if (title.isNotEmpty) ...[
+        Text(title, style: style()),
+        const SizedBox(height: 8),
+      ],
 
       if (books.isEmpty)
-        const Padding(
-          padding: EdgeInsets.all(12),
-          child: Text(
-            'Khong tim thay sach hoac Google Books dang gioi han truy cap.',
-          ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(emptyMessage),
         )
       else
         SizedBox(
@@ -129,6 +228,7 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
                 author: book.authors.isNotEmpty
                     ? book.authors.join(', ')
                     : "Unknow",
+                isFree: book.isFree,
                 func: () {
                   Navigator.pushNamed(
                     context,
@@ -152,6 +252,9 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
                   if (!context.mounted) return;
 
                   await libraryProvider.loadOfflineBooks(userId: userId);
+                  homeProvider.refreshLibraryPreview(
+                    libraryProvider.offlineBooks,
+                  );
 
                   if (!context.mounted) return;
 

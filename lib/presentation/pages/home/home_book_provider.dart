@@ -14,6 +14,9 @@ class HomeBookProvider extends ChangeNotifier {
   List<Book> continueBooks = [];
   List<Book> libraryBooks = [];
   List<Book> recommendationBooks = [];
+  Map<String, List<Book>> recommendationSections = {};
+  List<Book> searchResults = [];
+  String activeSearchKeyword = '';
 
   Future<void> loadHomeData() async {
     if (_homeLoaded) {
@@ -26,16 +29,38 @@ class HomeBookProvider extends ChangeNotifier {
       errMessage = null;
       notifyListeners();
 
-      final books = await _bookRepository.searchBooks('harry potter');
+      final savedBooks = await _bookRepository.getOfflineBooks();
+      final freeFiction = await _loadRecommendationSection(
+        freeQuery: 'public domain fiction',
+        paidQuery: 'fiction bestseller',
+      );
+      final freeTechnology = await _loadRecommendationSection(
+        freeQuery: 'free computer programming',
+        paidQuery: 'computer programming',
+      );
+      final freeScience = await _loadRecommendationSection(
+        freeQuery: 'public domain science',
+        paidQuery: 'science books',
+      );
 
-      continueBooks = books.take(4).toList();
-      libraryBooks = books.skip(4).take(3).toList();
-      recommendationBooks = books.skip(7).take(3).toList();
+      continueBooks = [];
+      libraryBooks = savedBooks.take(6).toList();
+      recommendationSections = {
+        'Free Fiction': freeFiction.take(5).toList(),
+        'Free Technology': freeTechnology.take(5).toList(),
+        'Free Science': freeScience.take(5).toList(),
+      };
+      recommendationBooks = recommendationSections.values
+          .expand((books) => books)
+          .toList();
+      searchResults = [];
+      activeSearchKeyword = '';
 
       _homeLoaded = true;
 
       debugPrint('===== LOAD HOME DATA SUCCESS =====');
-      debugPrint('Total books: ${books.length}');
+      debugPrint('Google recommendation books: ${recommendationBooks.length}');
+      debugPrint('Saved library books: ${savedBooks.length}');
       debugPrint('Continue books: ${continueBooks.length}');
       debugPrint('Library books: ${libraryBooks.length}');
       debugPrint('Recommendation books: ${recommendationBooks.length}');
@@ -54,6 +79,11 @@ class HomeBookProvider extends ChangeNotifier {
   Future<void> searchBooks(String keyword) async {
     final text = keyword.trim();
 
+    if (text.isEmpty) {
+      clearSearch();
+      return;
+    }
+
     if (text.length < 2) return;
 
     try {
@@ -61,11 +91,16 @@ class HomeBookProvider extends ChangeNotifier {
       errMessage = null;
       notifyListeners();
 
-      recommendationBooks = await _bookRepository.searchBooks(text);
+      activeSearchKeyword = text;
+      searchResults = await _bookRepository.searchBooks(
+        text,
+        onlyFreeEbooks: true,
+        maxResults: 15,
+      );
 
       debugPrint('===== SEARCH BOOKS SUCCESS =====');
       debugPrint('Keyword: $text');
-      debugPrint('Result count: ${recommendationBooks.length}');
+      debugPrint('Result count: ${searchResults.length}');
     } catch (e, stackTrace) {
       debugPrint('===== SEARCH BOOKS ERROR =====');
       debugPrint('$e');
@@ -85,6 +120,10 @@ class HomeBookProvider extends ChangeNotifier {
       debugPrint('Title: ${book.title}');
 
       await _bookRepository.saveBookOffline(book);
+      if (!libraryBooks.any((item) => item.id == book.id)) {
+        libraryBooks = [book, ...libraryBooks].take(6).toList();
+      }
+      notifyListeners();
 
       debugPrint('Save offline success');
     } catch (e, stackTrace) {
@@ -101,6 +140,40 @@ class HomeBookProvider extends ChangeNotifier {
     continueBooks.clear();
     libraryBooks.clear();
     recommendationBooks.clear();
+    recommendationSections.clear();
+    searchResults.clear();
+    activeSearchKeyword = '';
+    notifyListeners();
+  }
+
+  Future<List<Book>> _loadRecommendationSection({
+    required String freeQuery,
+    required String paidQuery,
+  }) async {
+    final freeBooks = await _bookRepository.searchBooks(
+      freeQuery,
+      onlyFreeEbooks: true,
+      maxResults: 5,
+    );
+    if (freeBooks.isNotEmpty) return freeBooks.take(5).toList();
+
+    final paidBooks = await _bookRepository.searchBooks(
+      paidQuery,
+      onlyFreeEbooks: false,
+      maxResults: 5,
+    );
+    return paidBooks.take(5).toList();
+  }
+
+  void clearSearch() {
+    activeSearchKeyword = '';
+    searchResults.clear();
+    errMessage = null;
+    notifyListeners();
+  }
+
+  void refreshLibraryPreview(List<Book> books) {
+    libraryBooks = books.take(6).toList();
     notifyListeners();
   }
 }

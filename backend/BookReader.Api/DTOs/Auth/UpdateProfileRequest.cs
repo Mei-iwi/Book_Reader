@@ -1,12 +1,11 @@
 namespace BookReader.Api.DTOs.Auth;
 
-public class AuthResponse
+public class UpdateProfileRequest
 {
-    public string Token { get; set; } = string.Empty;
-    public int UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
     public string? AvatarUrl { get; set; }
-    public string Role { get; set; } = string.Empty;
+    public string? Password { get; set; }
+    public string? ConfirmPassword { get; set; }
 }

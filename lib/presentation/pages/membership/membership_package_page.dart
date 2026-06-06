@@ -20,8 +20,21 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MembershipProvider>().loadPackages();
+      final userId = context.read<AuthProvider>().currentUser?.userId;
+      _loadMembership(userId);
     });
+  }
+
+  Future<void> _loadMembership(int? userId) async {
+    final provider = context.read<MembershipProvider>();
+    await provider.loadPackages(userId: userId);
+    if (!mounted || provider.currentPlan == null) return;
+    final index = provider.packages.indexWhere(
+      (package) => package.id == provider.currentPlan!.membershipPackageId,
+    );
+    if (index >= 0) {
+      setState(() => _selectedIndex = index);
+    }
   }
 
   Future<void> _subscribe(List<MembershipPackageModel> packages) async {
@@ -42,6 +55,14 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
     );
 
     if (!mounted) return;
+    if (success) {
+      final index = provider.packages.indexWhere(
+        (package) => package.id == provider.currentPlan?.membershipPackageId,
+      );
+      if (index >= 0) {
+        setState(() => _selectedIndex = index);
+      }
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -108,7 +129,7 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _buildUserInfoCard(),
+          _buildUserInfoCard(provider.currentPlan),
           const SizedBox(height: 24),
           for (var i = 0; i < provider.packages.length; i++) ...[
             PackageCard(
@@ -123,7 +144,8 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
     );
   }
 
-  Widget _buildUserInfoCard() {
+  Widget _buildUserInfoCard(UserMembershipModel? currentPlan) {
+    final endDate = currentPlan?.endDate;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -138,12 +160,14 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
             backgroundImage: AssetImage(Templateimage.avatar),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Member',
+                  currentPlan?.packageName.isNotEmpty == true
+                      ? currentPlan!.packageName
+                      : 'Member',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -152,7 +176,9 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'MEMBER ACCOUNT',
+                  currentPlan == null
+                      ? 'MEMBER ACCOUNT'
+                      : 'ACTIVE UNTIL ${endDate == null ? 'N/A' : '${endDate.day}/${endDate.month}/${endDate.year}'}',
                   style: TextStyle(
                     color: Colors.cyanAccent,
                     fontSize: 12,

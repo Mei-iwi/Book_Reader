@@ -5,13 +5,14 @@ Widget bookReading({
   required String url,
   required String name,
   required double percent,
+  VoidCallback? onTap,
 }) {
   return Builder(
     builder: (context) {
       return Padding(
         padding: const EdgeInsets.all(8.0),
         child: InkWell(
-          onTap: () {},
+          onTap: onTap,
           child: Container(
             width: MediaQuery.of(context).size.width,
             padding: EdgeInsets.all(10),
@@ -29,9 +30,10 @@ Widget bookReading({
             child: Row(
               children: [
                 Container(
-                  width: 100,
-                  height: 100,
+                  width: 72,
+                  height: 96,
                   decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
                     image: DecorationImage(
                       fit: BoxFit.cover,
                       image: checkSourceImage(urlImage: url)
@@ -40,20 +42,24 @@ Widget bookReading({
                     ),
                   ),
                 ),
-                SizedBox(width: 20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 20),
-                    percentBook(percent, context),
-                  ],
+                      SizedBox(height: 20),
+                      percentBook(percent, context),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -65,34 +71,39 @@ Widget bookReading({
 }
 
 Widget percentBook(double percent, BuildContext context) {
-  return Stack(
-    clipBehavior: Clip.none,
-    children: [
-      Container(
-        decoration: BoxDecoration(
-          color: Colors.blue[100],
-          borderRadius: BorderRadius.circular(100),
-        ),
-        width: MediaQuery.of(context).size.width * 0.5,
-        height: 10,
-      ),
-      Container(
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(100),
-        ),
-        width: (percent / 100) * 180,
-        height: 10,
-      ),
-      Positioned.fill(
-        top: -30,
-        child: Center(
-          child: Text(
-            "$percent% Completed",
-            style: TextStyle(color: Colors.grey),
+  final safePercent = percent.clamp(0, 100).toDouble();
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.blue[100],
+              borderRadius: BorderRadius.circular(100),
+            ),
+            width: constraints.maxWidth,
+            height: 10,
           ),
-        ),
-      ),
-    ],
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            width: constraints.maxWidth * (safePercent / 100),
+            height: 10,
+          ),
+          Positioned.fill(
+            top: -30,
+            child: Center(
+              child: Text(
+                "${safePercent.toStringAsFixed(0)}% Completed",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
   );
 }

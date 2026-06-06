@@ -20,15 +20,22 @@ class BookModel extends Book {
     super.localFilePath,
     super.isDownloaded,
     super.coverLocalPath,
+    super.isFree,
   });
 
   factory BookModel.fromGoogleBooksJson(Map<String, dynamic> json) {
     final volumeInfo = json['volumeInfo'] as Map<String, dynamic>? ?? {};
     final accessInfo = json['accessInfo'] as Map<String, dynamic>? ?? {};
+    final saleInfo = json['saleInfo'] as Map<String, dynamic>? ?? {};
 
     final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>? ?? {};
     final pdf = accessInfo['pdf'] as Map<String, dynamic>? ?? {};
     final epub = accessInfo['epub'] as Map<String, dynamic>? ?? {};
+    final saleability = saleInfo['saleability']?.toString() ?? '';
+    final accessViewStatus = accessInfo['accessViewStatus']?.toString() ?? '';
+    final hasDownload =
+        (pdf['downloadLink']?.toString() ?? '').isNotEmpty ||
+        (epub['downloadLink']?.toString() ?? '').isNotEmpty;
 
     return BookModel(
       id: json['id']?.toString() ?? '',
@@ -59,6 +66,10 @@ class BookModel extends Book {
       localFilePath: '',
       coverLocalPath: '',
       isDownloaded: false,
+      isFree:
+          saleability == 'FREE' ||
+          hasDownload ||
+          accessViewStatus == 'FULL_PUBLIC',
     );
   }
 
@@ -85,6 +96,7 @@ class BookModel extends Book {
       localFilePath: json['localFilePath']?.toString() ?? '',
       coverLocalPath: json['coverLocalPath']?.toString() ?? '',
       isDownloaded: json['isDownloaded'] == true,
+      isFree: json['isFree'] != false,
     );
   }
 
@@ -115,6 +127,7 @@ class BookModel extends Book {
       epubDownloadLink: map['epub_download_link']?.toString() ?? '',
       localFilePath: map['local_file_path']?.toString() ?? '',
       isDownloaded: map['is_downloaded'] == 1,
+      isFree: true,
     );
   }
   Map<String, dynamic> toSqliteMap() {
@@ -159,6 +172,7 @@ class BookModel extends Book {
       epubDownloadLink: epubDownloadLink,
       localFilePath: localFilePath,
       isDownloaded: isDownloaded ?? this.isDownloaded,
+      isFree: isFree,
     );
   }
 
@@ -183,6 +197,7 @@ class BookModel extends Book {
       epubDownloadLink: book.epubDownloadLink,
       localFilePath: localFilePath ?? book.localFilePath,
       isDownloaded: isDownloaded ?? book.isDownloaded,
+      isFree: book.isFree,
     );
   }
 }
