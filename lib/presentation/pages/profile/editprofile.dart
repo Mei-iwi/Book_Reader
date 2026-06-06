@@ -1,5 +1,6 @@
 import 'package:book_reader/data/datasources/local/dao/profile_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -203,24 +204,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         label: 'Name:',
                         controller: _nameController,
                         validator: (value) =>
-                            value!.isEmpty ? 'Vui lòng nhập tên' : null,
+                            AppValidators.requiredText(value, 'ten') ??
+                            AppValidators.maxLength(value, 80, 'Ten'),
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         label: 'Email:',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value!.isEmpty) return 'Vui lòng nhập email';
-                          if (!value.contains('@')) return 'Email không hợp lệ';
-                          return null;
-                        },
+                        validator: AppValidators.email,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         label: 'Phone:',
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
+                        validator: AppValidators.optionalPhone,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
@@ -234,6 +233,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           });
                         },
                         hintText: 'Nhập mật khẩu mới (nếu muốn)',
+                        validator: (value) {
+                          if ((value ?? '').isEmpty) return null;
+                          return AppValidators.password(value);
+                        },
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
@@ -248,11 +251,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         },
                         hintText: 'Nhập lại mật khẩu',
                         validator: (value) {
-                          if (_passwordController.text.isNotEmpty &&
-                              value != _passwordController.text) {
-                            return 'Mật khẩu không khớp!';
+                          if (_passwordController.text.isEmpty &&
+                              (value ?? '').isEmpty) {
+                            return null;
                           }
-                          return null;
+                          return AppValidators.confirmPassword(
+                            value,
+                            _passwordController.text,
+                          );
                         },
                       ),
                       const SizedBox(height: 40),

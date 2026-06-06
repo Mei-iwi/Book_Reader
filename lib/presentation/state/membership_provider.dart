@@ -24,9 +24,9 @@ class MembershipProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> subscribe(int packageId) async {
+  Future<bool> subscribe(int packageId, {required int userId}) async {
     try {
-      await _membershipApi.subscribe(packageId, userId: 1);
+      await _membershipApi.subscribe(packageId, userId: userId);
       return true;
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');

@@ -44,18 +44,14 @@ class AuthProvider extends ChangeNotifier {
 
       currentUser = await action();
       await _sessionStorage.saveUser(currentUser!);
+      _authRepository.setToken(currentUser!.token);
       return true;
     } catch (e) {
-      debugPrint('Auth API Error: $e. Falling back to local mock.');
-      currentUser = AppUser(
-        userId: 1,
-        email: 'mock@example.com',
-        fullName: 'Người Dùng Khách',
-        role: 'user',
-        token: 'mock_token',
-      );
-      await _sessionStorage.saveUser(currentUser!);
-      return true;
+      debugPrint('Auth API Error: $e');
+      currentUser = null;
+      _authRepository.setToken(null);
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();

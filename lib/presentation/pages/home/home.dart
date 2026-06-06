@@ -4,6 +4,7 @@ import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -141,12 +142,16 @@ Widget _buiderBookSection({required String title, required List<Book> books}) {
 
                   final homeProvider = context.read<HomeBookProvider>();
                   final libraryProvider = context.read<LibraryProvider>();
+                  final userId = context
+                      .read<AuthProvider>()
+                      .currentUser
+                      ?.userId;
 
                   await homeProvider.saveBookOffline(book);
 
                   if (!context.mounted) return;
 
-                  await libraryProvider.loadOfflineBooks();
+                  await libraryProvider.loadOfflineBooks(userId: userId);
 
                   if (!context.mounted) return;
 

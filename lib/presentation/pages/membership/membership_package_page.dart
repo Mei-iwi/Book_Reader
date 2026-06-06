@@ -1,5 +1,6 @@
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/data/datasources/remote/api/membership_api.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/membership_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -27,7 +28,18 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
     if (packages.isEmpty) return;
 
     final provider = context.read<MembershipProvider>();
-    final success = await provider.subscribe(packages[_selectedIndex].id);
+    final userId = context.read<AuthProvider>().currentUser?.userId;
+    if (userId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Vui long dang nhap lai.')));
+      return;
+    }
+
+    final success = await provider.subscribe(
+      packages[_selectedIndex].id,
+      userId: userId,
+    );
 
     if (!mounted) return;
 

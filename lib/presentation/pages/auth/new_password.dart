@@ -1,6 +1,7 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
 import 'package:flutter/material.dart';
@@ -39,12 +40,7 @@ class _NewPassword extends State<NewPassword> {
               icon: Icons.lock,
               isPassword: true,
               controller: newPassword,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'Mật khẩu mới không được để trống';
-                }
-                return null;
-              },
+              validator: AppValidators.password,
             ),
             SizedBox(height: 30),
             FormInput(
@@ -52,15 +48,8 @@ class _NewPassword extends State<NewPassword> {
               icon: Icons.lock,
               isPassword: true,
               controller: confirmPassword,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return "Mật khẩu xác nhận không được để trống";
-                }
-                if (v != newPassword.text.trim()) {
-                  return "Mật khẩu nhập lại không chính xác";
-                }
-                return null;
-              },
+              validator: (v) =>
+                  AppValidators.confirmPassword(v, newPassword.text),
             ),
             SizedBox(height: 50),
             buttonFull(

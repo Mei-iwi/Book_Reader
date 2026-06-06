@@ -33,6 +33,7 @@ class _Myprofile extends State<Myprofile> {
   }
 
   Future<void> _loadData() async {
+    final user = context.read<AuthProvider>().currentUser;
     final db = AppDatabase.instance;
     final favDao = FavoriteDao(db);
     final progDao = ReadingProgressDao(db);
@@ -41,9 +42,6 @@ class _Myprofile extends State<Myprofile> {
     final favs = await favDao.getAllFavorites();
     final hist = await progDao.getAllProgress();
 
-    // Check if we have local profile for current user
-    final authProvider = context.read<AuthProvider>();
-    final user = authProvider.currentUser;
     Map<String, dynamic>? prof;
     if (user != null) {
       prof = await profDao.getProfile(user.userId.toString());
