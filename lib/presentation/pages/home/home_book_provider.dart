@@ -1,11 +1,13 @@
+import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:flutter/foundation.dart';
 
 class HomeBookProvider extends ChangeNotifier {
   final BookRepository _bookRepository;
+  final ReadingProgressDao _readingProgressDao;
 
-  HomeBookProvider(this._bookRepository);
+  HomeBookProvider(this._bookRepository, this._readingProgressDao);
 
   bool isLoading = false;
   bool _homeLoaded = false;
@@ -15,12 +17,14 @@ class HomeBookProvider extends ChangeNotifier {
   List<Book> libraryBooks = [];
   List<Book> recommendationBooks = [];
   Map<String, List<Book>> recommendationSections = {};
+  Map<String, Map<String, dynamic>> continueProgressByBookId = {};
   List<Book> searchResults = [];
   String activeSearchKeyword = '';
 
   Future<void> loadHomeData() async {
     if (_homeLoaded) {
       debugPrint('Home data already loaded. Skip API call.');
+      await _refreshLocalHomeData();
       return;
     }
 
@@ -30,6 +34,7 @@ class HomeBookProvider extends ChangeNotifier {
       notifyListeners();
 
       final savedBooks = await _bookRepository.getOfflineBooks();
+      final progressBooks = await _buildContinueBooks(savedBooks);
       final freeFiction = await _loadRecommendationSection(
         freeQuery: 'public domain fiction',
         paidQuery: 'fiction bestseller',
@@ -43,7 +48,7 @@ class HomeBookProvider extends ChangeNotifier {
         paidQuery: 'science books',
       );
 
-      continueBooks = [];
+      continueBooks = progressBooks;
       libraryBooks = savedBooks.take(6).toList();
       recommendationSections = {
         'Free Fiction': freeFiction.take(5).toList(),
@@ -141,9 +146,79 @@ class HomeBookProvider extends ChangeNotifier {
     libraryBooks.clear();
     recommendationBooks.clear();
     recommendationSections.clear();
+    continueProgressByBookId.clear();
     searchResults.clear();
     activeSearchKeyword = '';
     notifyListeners();
+  }
+
+  Future<void> _refreshLocalHomeData() async {
+    try {
+      final savedBooks = await _bookRepository.getOfflineBooks();
+      libraryBooks = savedBooks.take(6).toList();
+      continueBooks = await _buildContinueBooks(savedBooks);
+      notifyListeners();
+    } catch (e, stackTrace) {
+      debugPrint('===== REFRESH LOCAL HOME DATA ERROR =====');
+      debugPrint('$e');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  Future<List<Book>> _buildContinueBooks(List<Book> savedBooks) async {
+    final progressRows = await _readingProgressDao.getTopProgress(limit: 5);
+    final savedById = {for (final book in savedBooks) book.id: book};
+    final books = <Book>[];
+    final progressMap = <String, Map<String, dynamic>>{};
+
+    for (final row in progressRows) {
+      final bookId = row['book_id']?.toString() ?? '';
+      if (bookId.trim().isEmpty) continue;
+
+      progressMap[bookId] = Map<String, dynamic>.from(row);
+
+      Book? book = savedById[bookId];
+      if (book == null) {
+        try {
+          book = await _bookRepository.getBookDetail(bookId);
+        } catch (e) {
+          debugPrint('Cannot load continue book detail for $bookId: $e');
+        }
+      }
+
+      books.add(book ?? _fallbackContinueBook(bookId, row));
+    }
+
+    continueProgressByBookId = progressMap;
+    return books.take(5).toList();
+  }
+
+  Book _fallbackContinueBook(String bookId, Map<String, dynamic> progress) {
+    final currentPage = _readInt(progress['current_page'], fallback: 1);
+
+    return Book(
+      id: bookId,
+      title: 'Đang đọc (ID: $bookId)',
+      authors: const ['Unknown'],
+      description: '',
+      thumbnailUrl: '',
+      categories: const [],
+      pageCount: currentPage > 0 ? currentPage : 1,
+      language: '',
+      previewLink: '',
+      webReaderLink: '',
+      source: 'reading_progress',
+    );
+  }
+
+  Map<String, dynamic>? getProgressForBook(String bookId) {
+    return continueProgressByBookId[bookId];
+  }
+
+  int _readInt(Object? value, {required int fallback}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
   Future<List<Book>> _loadRecommendationSection({

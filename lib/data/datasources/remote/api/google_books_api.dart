@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 class GoogleBooksApi {
   final ApiClient _apiClient;
+  static const String _googleBooksApiKey = Env.googleBooksApiKey;
 
   GoogleBooksApi(this._apiClient);
 
@@ -68,8 +69,7 @@ class GoogleBooksApi {
     } catch (_) {
       if (int.tryParse(bookId) != null) rethrow;
       final uri = Uri.https('www.googleapis.com', '/books/v1/volumes/$bookId', {
-        if (Env.googleBooksApiKey.trim().isNotEmpty)
-          'key': Env.googleBooksApiKey,
+        if (_googleBooksApiKey.trim().isNotEmpty) 'key': _googleBooksApiKey,
       });
       final response = await http.get(uri).timeout(const Duration(seconds: 20));
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -96,8 +96,7 @@ class GoogleBooksApi {
         if (langRestrict != null && langRestrict.trim().isNotEmpty)
           'langRestrict': langRestrict,
         if (onlyFreeEbooks) 'filter': 'free-ebooks',
-        if (Env.googleBooksApiKey.trim().isNotEmpty)
-          'key': Env.googleBooksApiKey,
+        if (_googleBooksApiKey.trim().isNotEmpty) 'key': _googleBooksApiKey,
       };
       final uri = Uri.https('www.googleapis.com', '/books/v1/volumes', query);
       final response = await http.get(uri).timeout(const Duration(seconds: 20));

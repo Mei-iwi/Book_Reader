@@ -39,6 +39,14 @@ Book Reader là ứng dụng Flutter hỗ trợ tìm kiếm, lưu, đọc và qu
 - Tăng validation cho Sign in, Sign up, Forgot password, New password, Edit Profile, Comment.
 - Reader tự load reading progress đã lưu.
 - Reader xử lý PDF/EPUB local bằng `open_filex` để mở bằng ứng dụng ngoài.
+- Reader có nút `Lưu bookmark` trên AppBar cho WebView, TXT, PDF/EPUB local và PDF/EPUB remote.
+- Reader hiển thị thông báo rõ rằng PDF/EPUB mở bằng ứng dụng đọc tài liệu ngoài, nhưng bookmark vẫn lưu trong Book Reader.
+- Home Continue Reading lấy top 5 progress từ SQLite, bỏ progress 0%, sort theo `progress_percent` giảm dần và mở Reader tại `current_page`.
+- Profile Reading History chỉ giữ/hiển thị 10 progress mới nhất và có nút xóa từng progress với dialog xác nhận tiếng Việt.
+- Library Downloaded hiển thị sách có `isDownloaded`, có `localFilePath`, hoặc `source == local_import`.
+- Profile favorite card ẩn số tim giả để không còn hiện `0`.
+- Drawer/Menu có banner `Book Reader` và subtitle `Read, save and continue your books`.
+- Sửa `GoogleBooksApi` dùng `String.fromEnvironment` trực tiếp để Google Books API key là optional qua `--dart-define=GOOGLE_BOOKS_API_KEY=...`.
 - Sửa widget test mặc định thành smoke test phù hợp với app.
 - Tạo tài liệu Firebase setup thay vì thêm runtime Firebase thiếu config.
 
@@ -69,7 +77,7 @@ SQLite database `book_reader.db` được tạo tại `lib/data/datasources/loca
 | Bảng | DAO | Chức năng |
 | --- | --- | --- |
 | `offline_books` | `OfflineBookDao` | Lưu/xem/xóa sách offline |
-| `reading_progress` | `ReadingProgressDao` | Lưu/xem tiến độ đọc |
+| `reading_progress` | `ReadingProgressDao` | Lưu/xem/xóa tiến độ đọc, lấy top Continue, lấy 10 lịch sử gần nhất, trim bản ghi cũ |
 | `bookmarks` | `BookmarkDao` | Thêm/xem/xóa bookmark |
 | `comments` | `CommentDao` | Thêm/xem bình luận |
 | `user_profile` | `ProfileDao` | Lưu/xem/sửa profile local |
@@ -117,7 +125,7 @@ Chi tiết nằm trong `docs/final_validation_report.md`.
 
 - Firebase chưa chạy thật do thiếu config.
 - Một số provider cũ vẫn còn trong repo nhưng không thuộc flow chính.
-- Reader chưa render PDF/EPUB nội bộ; hiện mở bằng app ngoài.
+- Reader chưa render PDF/EPUB nội bộ; hiện mở bằng app ngoài và bookmark PDF/EPUB là bookmark cấp tài liệu.
 - Một số text trong source cũ có thể còn lỗi encoding hiển thị.
 - Comment local chưa có sửa/xóa trên UI.
 

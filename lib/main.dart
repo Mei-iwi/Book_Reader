@@ -2,6 +2,7 @@ import 'package:book_reader/app.dart';
 import 'package:book_reader/core/services/local_storage/session_storage.dart';
 import 'package:book_reader/core/services/http/api_client.dart';
 import 'package:book_reader/data/datasources/local/dao/offline_book_dao.dart';
+import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
 import 'package:book_reader/data/datasources/local/file_cache/book_file_downloader.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/datasources/remote/api/auth_api.dart';
@@ -31,6 +32,7 @@ void main() {
 
   final appDatabase = AppDatabase.instance;
   final offlineBookDao = OfflineBookDao(appDatabase);
+  final readingProgressDao = ReadingProgressDao(appDatabase);
   final bookFileDownloader = BookFileDownloader();
 
   final bookRepository = BookRepositoryImpl(
@@ -46,7 +48,9 @@ void main() {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(authRepository, sessionStorage),
         ),
-        ChangeNotifierProvider(create: (_) => HomeBookProvider(bookRepository)),
+        ChangeNotifierProvider(
+          create: (_) => HomeBookProvider(bookRepository, readingProgressDao),
+        ),
         ChangeNotifierProvider(
           create: (_) => BookProvider(SearchBooks(bookRepository)),
         ),

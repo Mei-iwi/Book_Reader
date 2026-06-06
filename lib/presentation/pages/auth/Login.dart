@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';

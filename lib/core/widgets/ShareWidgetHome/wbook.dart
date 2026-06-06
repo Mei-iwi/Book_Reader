@@ -9,9 +9,15 @@ Widget wbook({
   required VoidCallback func,
   required VoidCallback onDownload,
   bool isFree = true,
+  bool openDirectly = false,
 }) {
   return InkWell(
     onTap: () {
+      if (openDirectly) {
+        func();
+        return;
+      }
+
       showBookSnackBar(
         context,
         title: title,

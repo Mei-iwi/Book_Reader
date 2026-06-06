@@ -6,6 +6,7 @@ Widget bookReading({
   required String name,
   required double percent,
   VoidCallback? onTap,
+  VoidCallback? onDelete,
 }) {
   return Builder(
     builder: (context) {
@@ -61,6 +62,14 @@ Widget bookReading({
                     ],
                   ),
                 ),
+                if (onDelete != null) ...[
+                  SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Xóa tiến độ đọc',
+                    onPressed: onDelete,
+                    icon: Icon(Icons.delete_outline, color: Colors.red),
+                  ),
+                ],
               ],
             ),
           ),

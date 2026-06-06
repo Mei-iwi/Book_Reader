@@ -1,21 +1,27 @@
 # Báo cáo kiểm tra cuối
 
-## Kết quả lệnh
+## Kết quả lệnh follow-up
 
-| Lệnh | Kết quả | Lỗi/cảnh báo chính | Fix đã áp dụng | Vấn đề còn lại |
-| --- | --- | --- | --- | --- |
-| `flutter pub get` | Thành công khi chạy ngoài sandbox | Trong sandbox bị timeout 120s; ngoài sandbox chạy thành công và báo 26 package có bản mới hơn nhưng bị constraint giữ lại | Chạy lại với quyền ngoài sandbox | Không cần nâng package trước khi nộp |
-| `dart format .` | Thành công | Format 84 file, trong đó các file chỉnh sửa được định dạng lại | Đã format sau khi sửa code | Không còn |
-| `flutter analyze` | Thành công | Ban đầu có 7 info, sau đó 2 info; lần cuối `No issues found!` | Sửa `BuildContext` sau async gap, thêm braces, dọn test/import | Không còn |
-| `flutter test` | Thành công | Test cũ là counter demo và import sai casing | Thay bằng smoke test màn `Login` | `All tests passed!` |
-| `flutter build apk --debug` | Thành công, tạo APK | Có cảnh báo Kotlin incremental cache của `webview_flutter_android`, nhưng command exit 0 và tạo `build/app/outputs/flutter-apk/app-debug.apk` | Không cần sửa code vì build vẫn thành công | Có thể xóa build cache/chạy clean nếu cảnh báo lặp lại |
-| `dotnet restore backend/BookReader.Api/BookReader.Api.csproj` | Thành công | All projects up-to-date | Không cần sửa | Không còn |
-| `dotnet build backend/BookReader.Api/BookReader.Api.csproj` | Thành công | 0 Warning, 0 Error | Không cần sửa | Không còn |
+| Lệnh | Kết quả | Ghi chú |
+| --- | --- | --- |
+| `flutter pub get` | Thành công | Có 26 package có bản mới hơn nhưng bị giữ bởi constraint hiện tại |
+| `dart format .` | Thành công | Format chạy sạch; lượt cuối báo `Formatted 83 files (1 changed)` |
+| `flutter analyze` | Thành công | `No issues found!` |
+| `flutter test` | Thành công | `All tests passed!` |
+| `flutter build apk --debug` | Thành công | Tạo `build/app/outputs/flutter-apk/app-debug.apk` |
 
-## Tóm tắt
+## Fix trong quá trình validation
+
+- Sửa `GoogleBooksApi` để không còn phụ thuộc file `lib/config/env.dart` bị ignore; API key optional đọc trực tiếp qua `--dart-define=GOOGLE_BOOKS_API_KEY=...`.
+- Thêm ignore cục bộ cho `lib/presentation/pages/auth/Login.dart` vì file đang tồn tại với tên viết hoa; không rename file để tránh rủi ro trên Windows/git.
+
+## Backend
+
+Không sửa backend source trong follow-up này, nên không chạy lại `dotnet restore`/`dotnet build`.
+
+## Kết luận
 
 - Flutter analyze sạch.
 - Flutter test pass.
 - Android debug APK build được.
-- Backend .NET build được.
-- Cảnh báo Android build còn lại liên quan Kotlin incremental cache của package `webview_flutter_android`, không chặn tạo APK.
+- Các thay đổi Reader, Home Continue, Profile History, Library Downloaded, Favorite UI và Drawer banner đã qua validation Flutter.

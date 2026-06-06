@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -113,6 +114,10 @@ class ApiClient {
     } on SocketException {
       throw Exception(
         'Không thể kết nối backend. Hãy kiểm tra mạng hoặc server.',
+      );
+    } on TimeoutException {
+      throw Exception(
+        'Backend không phản hồi sau 20 giây. Hãy kiểm tra server port 5102 và SQL Server.',
       );
     } on HttpException {
       throw Exception('Lỗi HTTP khi gọi backend.');

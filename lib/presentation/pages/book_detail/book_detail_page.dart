@@ -24,7 +24,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final routeBookId = ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
+    final routeBookId =
+        ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
     if (routeBookId == _bookId && _bookFuture != null) return;
 
     _bookId = routeBookId;
@@ -94,7 +95,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
         final book = snapshot.data;
         if (book == null) {
-          return const Scaffold(body: Center(child: Text('Khong tim thay sach.')));
+          return const Scaffold(
+            body: Center(child: Text('Khong tim thay sach.')),
+          );
         }
 
         return _BookDetailContent(
@@ -167,7 +170,9 @@ class _BookDetailContent extends StatelessWidget {
                   style: const TextStyle(color: Colors.black87, fontSize: 14),
                   children: [
                     TextSpan(
-                      text: book.authors.isEmpty ? 'Unknown' : book.authors.first,
+                      text: book.authors.isEmpty
+                          ? 'Unknown'
+                          : book.authors.first,
                       style: const TextStyle(color: Color(0xFF4B5563)),
                     ),
                   ],
@@ -259,14 +264,14 @@ class _BookDetailContent extends StatelessWidget {
       }
       await libraryProvider.loadOfflineBooks(userId: userId);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Da luu sach vao thu vien')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Da luu sach vao thu vien')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Khong the tai sach: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Khong the tai sach: $e')));
     }
   }
 
