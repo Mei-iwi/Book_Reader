@@ -8,10 +8,14 @@ import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/datasources/remote/api/bookmark_api.dart';
 import 'package:book_reader/data/datasources/remote/api/reading_progress_api.dart';
 import 'package:book_reader/presentation/pages/comment/comments.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class Reader extends StatefulWidget {
@@ -37,6 +41,8 @@ class Reader extends StatefulWidget {
 
   /// Link preview từ Google Books.
   final String? previewLink;
+  final String? pdfDownloadLink;
+  final String? epubDownloadLink;
 
   const Reader({
     super.key,
@@ -50,6 +56,8 @@ class Reader extends StatefulWidget {
     this.contentText,
     this.webReaderLink,
     this.previewLink,
+    this.pdfDownloadLink,
+    this.epubDownloadLink,
   });
 
   @override
@@ -66,6 +74,10 @@ class _Reader extends State<Reader> {
 
   WebViewController? _webViewController;
   int _webProgress = 0;
+  bool _webHasError = false;
+  bool _isOpeningRemoteFile = false;
+  bool _autoOpenedRemoteFile = false;
+  String? _webErrorMessage;
 
   String get _onlineLink {
     final webReaderLink = widget.webReaderLink?.trim() ?? '';
@@ -78,6 +90,11 @@ class _Reader extends State<Reader> {
   }
 
   bool get _hasOnlineLink => _onlineLink.isNotEmpty;
+
+  String get _remotePdfLink => widget.pdfDownloadLink?.trim() ?? '';
+  String get _remoteEpubLink => widget.epubDownloadLink?.trim() ?? '';
+  bool get _hasRemotePdf => _remotePdfLink.isNotEmpty;
+  bool get _hasRemoteEpub => _remoteEpubLink.isNotEmpty;
 
   bool get _hasLocalTextFile {
     final localPath = widget.localFilePath?.trim() ?? '';
@@ -93,6 +110,7 @@ class _Reader extends State<Reader> {
     final localPath = widget.localFilePath?.trim() ?? '';
 
     if (_hasLocalTextFile) return false;
+    if (_hasRemotePdf || _hasRemoteEpub) return false;
 
     // Nếu chưa có file local đọc được, ưu tiên hiển thị Google Books trong app.
     if (_hasOnlineLink) return true;
@@ -124,7 +142,18 @@ class _Reader extends State<Reader> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSavedProgress();
       _saveProgress();
+      _autoOpenRemoteFileIfNeeded();
     });
+  }
+
+  void _autoOpenRemoteFileIfNeeded() {
+    if (_autoOpenedRemoteFile || (!_hasRemotePdf && !_hasRemoteEpub)) return;
+    _autoOpenedRemoteFile = true;
+    final isPdf = _hasRemotePdf;
+    _openRemoteFileExternal(
+      url: isPdf ? _remotePdfLink : _remoteEpubLink,
+      extension: isPdf ? 'pdf' : 'epub',
+    );
   }
 
   void _initWebView() {
@@ -146,6 +175,8 @@ class _Reader extends State<Reader> {
 
             setState(() {
               _webProgress = 0;
+              _webHasError = false;
+              _webErrorMessage = null;
             });
           },
           onPageFinished: (_) {
@@ -157,6 +188,11 @@ class _Reader extends State<Reader> {
           },
           onWebResourceError: (error) {
             debugPrint('WEBVIEW ERROR: ${error.description}');
+            if (!mounted) return;
+            setState(() {
+              _webHasError = true;
+              _webErrorMessage = error.description;
+            });
           },
         ),
       )
@@ -367,35 +403,15 @@ class _Reader extends State<Reader> {
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-
-              showDialog(
-                context: parentContext,
-                barrierDismissible: false,
-                builder: (_) {
-                  return const Center(child: CircularProgressIndicator());
-                },
-              );
-
-              await Future.delayed(const Duration(seconds: 1));
-
-              if (!parentContext.mounted) return;
-
-              Navigator.of(parentContext, rootNavigator: true).pop();
-
-              await _saveProgress();
-
-              if (!parentContext.mounted) return;
-              Navigator.pushReplacementNamed(parentContext, AppRoute.home);
+              await _leaveReader(parentContext);
             },
             child: const Text('Rời khỏi'),
           ),
           TextButton(
             onPressed: () async {
               // TODO: xử lý lưu bookmark ở đây
-              await _saveBookmark();
-              await _saveProgress();
-              if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
+              await _leaveReader(parentContext, saveBookmark: true);
             },
             child: const Text('Lưu bookmark rời khỏi'),
           ),
@@ -408,6 +424,30 @@ class _Reader extends State<Reader> {
         ],
       ),
     );
+  }
+
+  Future<void> _leaveReader(
+    BuildContext parentContext, {
+    bool saveBookmark = false,
+  }) async {
+    showDialog(
+      context: parentContext,
+      barrierDismissible: false,
+      builder: (_) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    if (saveBookmark) {
+      await _saveBookmark();
+    }
+    await _saveProgress();
+
+    if (!parentContext.mounted) return;
+    Navigator.of(parentContext, rootNavigator: true).pop();
+
+    if (!parentContext.mounted) return;
+    Navigator.pushReplacementNamed(parentContext, AppRoute.home);
   }
 
   void _previousPage() {
@@ -493,7 +533,11 @@ class _Reader extends State<Reader> {
           const SizedBox(width: 10),
         ],
       ),
-      body: _shouldUseWebView ? _buildWebReader() : _buildTextReader(),
+      body: _shouldUseWebView
+          ? _buildWebReader()
+          : (_hasRemotePdf || _hasRemoteEpub)
+          ? _buildRemoteFileReader()
+          : _buildTextReader(),
       bottomNavigationBar: _shouldUseWebView
           ? null
           : _buildBottomPageNavigation(totalPage),
@@ -514,11 +558,175 @@ class _Reader extends State<Reader> {
     }
   }
 
+  Future<void> _openRemoteFileExternal({
+    required String url,
+    required String extension,
+  }) async {
+    if (url.trim().isEmpty || _isOpeningRemoteFile) return;
+
+    setState(() {
+      _isOpeningRemoteFile = true;
+    });
+
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final safeBookId = (widget.bookId ?? widget.title).replaceAll(
+        RegExp(r'[^a-zA-Z0-9_-]'),
+        '_',
+      );
+      final filePath = p.join(directory.path, 'books', '$safeBookId.$extension');
+      final file = File(filePath);
+      await file.parent.create(recursive: true);
+
+      if (!await file.exists() || await file.length() == 0) {
+        await Dio().download(url.replaceFirst('http://', 'https://'), filePath);
+      }
+
+      final result = await OpenFilex.open(filePath);
+      if (!mounted) return;
+
+      if (result.type != ResultType.done) {
+        final launched = await launchUrl(
+          Uri.parse(url.replaceFirst('http://', 'https://')),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!launched && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Khong the mo file: ${result.message}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Khong the tai/mo file: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isOpeningRemoteFile = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openOnlineLinkExternal(String url) async {
+    if (url.trim().isEmpty) return;
+    final launched = await launchUrl(
+      Uri.parse(url.replaceFirst('http://', 'https://')),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Khong the mo link doc sach.')),
+      );
+    }
+  }
+
+  Widget _buildRemoteFileReader() {
+    final isPdf = _hasRemotePdf;
+    final link = isPdf ? _remotePdfLink : _remoteEpubLink;
+    final extension = isPdf ? 'pdf' : 'epub';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(isPdf ? Icons.picture_as_pdf : Icons.menu_book, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              isPdf
+                  ? 'Sach nay co ban PDF. Tai ve va mo bang trinh doc PDF tren may.'
+                  : 'Sach nay co ban EPUB. Tai ve va mo bang trinh doc EPUB tren may.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _isOpeningRemoteFile
+                  ? null
+                  : () => _openRemoteFileExternal(
+                        url: link,
+                        extension: extension,
+                      ),
+              icon: _isOpeningRemoteFile
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.open_in_new),
+              label: Text(_isOpeningRemoteFile ? 'Dang mo...' : 'Mo $extension'),
+            ),
+            if (_hasOnlineLink) ...[
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => _openOnlineLinkExternal(_onlineLink),
+                child: const Text('Mo ban doc online'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWebReader() {
     final controller = _webViewController;
 
     if (controller == null) {
       return const Center(child: Text('Không thể khởi tạo màn đọc online.'));
+    }
+
+    if (_webHasError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                _webErrorMessage ?? 'Khong the mo sach bang WebView.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              if (_hasRemotePdf)
+                ElevatedButton.icon(
+                  onPressed: _isOpeningRemoteFile
+                      ? null
+                      : () => _openRemoteFileExternal(
+                            url: _remotePdfLink,
+                            extension: 'pdf',
+                          ),
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text('Mo PDF'),
+                ),
+              if (_hasRemoteEpub)
+                ElevatedButton.icon(
+                  onPressed: _isOpeningRemoteFile
+                      ? null
+                      : () => _openRemoteFileExternal(
+                            url: _remoteEpubLink,
+                            extension: 'epub',
+                          ),
+                  icon: const Icon(Icons.menu_book),
+                  label: const Text('Mo EPUB'),
+                ),
+              TextButton(
+                onPressed: () => _openOnlineLinkExternal(_onlineLink),
+                child: const Text('Mo bang trinh duyet'),
+              ),
+              TextButton(
+                onPressed: _reloadWebView,
+                child: const Text('Thu lai'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Column(

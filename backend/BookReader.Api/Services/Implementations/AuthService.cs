@@ -99,6 +99,57 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponse>.Ok(ToAuthResponse(user));
     }
 
+    public async Task<ApiResponse<AuthResponse>> UpdateProfileAsync(string token, UpdateProfileRequest request)
+    {
+        var userId = _jwtHelper.GetUserIdFromToken(token);
+        if (userId == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid token.");
+        }
+
+        var user = await _authRepository.GetByIdAsync(userId.Value);
+        if (user == null || !user.IsActive)
+        {
+            return ApiResponse<AuthResponse>.Fail("User not found.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FullName))
+        {
+            return ApiResponse<AuthResponse>.Fail("Full name is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return ApiResponse<AuthResponse>.Fail("Email is required.");
+        }
+
+        var email = request.Email.Trim();
+        var existingUser = await _authRepository.GetByEmailAsync(email);
+        if (existingUser != null && existingUser.Id != user.Id)
+        {
+            return ApiResponse<AuthResponse>.Fail("Email already exists.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            if (request.Password != request.ConfirmPassword)
+            {
+                return ApiResponse<AuthResponse>.Fail("Confirm password does not match.");
+            }
+
+            user.PasswordHash = PasswordHasher.Hash(request.Password);
+        }
+
+        user.FullName = request.FullName.Trim();
+        user.Email = email;
+        user.PhoneNumber = request.PhoneNumber;
+        user.AvatarUrl = request.AvatarUrl;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _authRepository.UpdateAsync(user);
+        return ApiResponse<AuthResponse>.Ok(ToAuthResponse(user), "Profile updated successfully.");
+    }
+
     private AuthResponse ToAuthResponse(AppUser user)
     {
         return new AuthResponse
@@ -107,6 +158,8 @@ public class AuthService : IAuthService
             UserId = user.Id,
             FullName = user.FullName,
             Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            AvatarUrl = user.AvatarUrl,
             Role = user.Role
         };
     }

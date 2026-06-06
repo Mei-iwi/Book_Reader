@@ -7,11 +7,15 @@ import 'package:book_reader/data/datasources/local/dao/favorite_dao.dart';
 import 'package:book_reader/data/datasources/local/dao/profile_dao.dart';
 import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/domain/entities/book.dart';
+import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/profile/editprofile.dart';
+import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 
 class Myprofile extends StatefulWidget {
   const Myprofile({super.key});
@@ -64,17 +68,20 @@ class _Myprofile extends State<Myprofile> {
 
     String fullName = 'Người dùng';
     String email = 'Chưa đăng nhập';
+    String avatarPath = '';
 
     if (currentUser != null) {
       fullName = currentUser.fullName.trim().isNotEmpty
           ? currentUser.fullName
           : fullName;
       email = currentUser.email.trim().isNotEmpty ? currentUser.email : email;
+      avatarPath = currentUser.avatarUrl;
     }
 
     if (_localProfile != null) {
       fullName = _localProfile!['full_name'] ?? fullName;
       email = _localProfile!['email'] ?? email;
+      avatarPath = _localProfile!['avatar_path']?.toString() ?? avatarPath;
     }
 
     final downloadCount = libraryProvider.offlineBooks.length;
@@ -159,9 +166,7 @@ class _Myprofile extends State<Myprofile> {
                               width: 110,
                               height: 110,
                               child: CircleAvatar(
-                                backgroundImage: AssetImage(
-                                  Templateimage.avatar,
-                                ),
+                                backgroundImage: _avatarImage(avatarPath),
                               ),
                             ),
                           ),
@@ -282,12 +287,13 @@ class _Myprofile extends State<Myprofile> {
                                         : Templateimage.book1,
                                     title: fav['title'] ?? 'Unknown',
                                     author: fav['author'] ?? 'Unknown',
-                                    func: () {
-                                      Navigator.pushNamed(
+                                    func: () async {
+                                      await Navigator.pushNamed(
                                         context,
                                         '/book-detail',
                                         arguments: fav['book_id'],
                                       );
+                                      _loadData();
                                     },
                                     rateFavourite: 0,
                                   );
@@ -321,12 +327,25 @@ class _Myprofile extends State<Myprofile> {
                               ),
                               child: Column(
                                 children: _history.map((hist) {
+                                  final bookId =
+                                      hist['book_id']?.toString() ?? '';
+                                  final book = _findBook(
+                                    bookId,
+                                    libraryProvider.offlineBooks,
+                                  );
                                   return bookReading(
-                                    url: Templateimage
-                                        .book1, // Fallback since history doesn't store cover
-                                    name: 'Đang đọc (ID: ${hist['book_id']})',
+                                    url: book?.thumbnailUrl.isNotEmpty == true
+                                        ? book!.thumbnailUrl
+                                        : Templateimage.book1,
+                                    name:
+                                        book?.title ?? 'Dang doc (ID: $bookId)',
                                     percent: (hist['progress_percent'] ?? 0)
                                         .toDouble(),
+                                    onTap: () => _openReaderFromHistory(
+                                      context,
+                                      hist,
+                                      book,
+                                    ),
                                   );
                                 }).toList(),
                               ),
@@ -336,6 +355,65 @@ class _Myprofile extends State<Myprofile> {
                 ),
               ),
             ),
+    );
+  }
+
+  ImageProvider _avatarImage(String avatarPath) {
+    final value = avatarPath.trim();
+    if (value.isNotEmpty && File(value).existsSync()) {
+      return FileImage(File(value));
+    }
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return NetworkImage(value);
+    }
+    return AssetImage(Templateimage.avatar);
+  }
+
+  Book? _findBook(String bookId, List<Book> books) {
+    for (final book in books) {
+      if (book.id == bookId) return book;
+    }
+    return null;
+  }
+
+  Future<void> _openReaderFromHistory(
+    BuildContext context,
+    Map<String, dynamic> history,
+    Book? cachedBook,
+  ) async {
+    final bookId = history['book_id']?.toString() ?? '';
+    if (bookId.isEmpty) return;
+
+    Book? book = cachedBook;
+    if (book == null) {
+      try {
+        book = await context.read<BookRepository>().getBookDetail(bookId);
+      } catch (_) {
+        book = null;
+      }
+    }
+
+    if (!context.mounted) return;
+
+    final currentPage = history['current_page'] is int
+        ? history['current_page'] as int
+        : 1;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Reader(
+          value: currentPage,
+          total: (book?.pageCount ?? 0) > 0 ? book!.pageCount : 1,
+          title: book?.title ?? 'Reading',
+          bookId: bookId,
+          userId: context.read<AuthProvider>().currentUser?.userId,
+          localFilePath: book?.localFilePath,
+          webReaderLink: book?.webReaderLink,
+          previewLink: book?.previewLink,
+          pdfDownloadLink: book?.pdfDownloadLink,
+          epubDownloadLink: book?.epubDownloadLink,
+        ),
+      ),
     );
   }
 }

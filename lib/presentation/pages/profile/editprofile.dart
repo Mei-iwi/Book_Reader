@@ -2,8 +2,10 @@ import 'package:book_reader/data/datasources/local/dao/profile_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -27,6 +29,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   // Biến trạng thái ẩn/hiện mật khẩu
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _avatarPath = '';
 
   @override
   void initState() {
@@ -43,12 +46,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
         setState(() {
           _nameController.text = profile['full_name'] ?? user.fullName;
           _emailController.text = profile['email'] ?? user.email;
-          _phoneController.text = ''; // Add to db if needed
+          _phoneController.text = user.phoneNumber;
+          _avatarPath = profile['avatar_path']?.toString() ?? user.avatarUrl;
         });
       } else {
         setState(() {
           _nameController.text = user.fullName;
           _emailController.text = user.email;
+          _phoneController.text = user.phoneNumber;
+          _avatarPath = user.avatarUrl;
         });
       }
     }
@@ -71,11 +77,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (_formKey.currentState!.validate()) {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
+        final authProvider = context.read<AuthProvider>();
+        final success = await authProvider.updateProfile(
+          fullName: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          phoneNumber: _phoneController.text.trim(),
+          avatarUrl: _avatarPath.trim(),
+          password: _passwordController.text.trim().isEmpty
+              ? null
+              : _passwordController.text,
+          confirmPassword: _confirmPasswordController.text.trim().isEmpty
+              ? null
+              : _confirmPasswordController.text,
+        );
+        if (!success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.errorMessage ?? 'Cap nhat that bai'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
         final dao = ProfileDao(AppDatabase.instance);
         await dao.saveProfile(
           id: user.userId.toString(),
-          fullName: _nameController.text,
-          email: _emailController.text,
+          fullName: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          avatarPath: _avatarPath.trim(),
         );
       }
 
@@ -149,21 +179,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 ),
                               ],
                             ),
-                            child: const CircleAvatar(
+                            child: CircleAvatar(
                               radius: 50,
                               // Dùng ảnh cỏ 4 lá tương tự mockup (bạn thay bằng link thật hoặc Asset)
-                              backgroundImage: NetworkImage(
-                                'https://cdn.pixabay.com/photo/2013/07/12/17/00/four-leaf-clover-151042_1280.png',
-                              ),
+                              backgroundImage: _avatarImage(),
                               backgroundColor: Colors.green,
                             ),
                           ),
                           const SizedBox(height: 8),
                           // Nút Edit Avatar
                           InkWell(
-                            onTap: () {
+                            onTap: _pickAvatar,
+                            /*
                               // TODO: Xử lý đổi avatar
-                            },
+                            */
                             child: Row(
                               children: const [
                                 Icon(
@@ -295,6 +324,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _pickAvatar() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+      dialogTitle: 'Chon anh avatar',
+    );
+    final path = result?.files.single.path;
+    if (path == null || path.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chua chon anh avatar.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _avatarPath = path;
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Da chon avatar: ${result!.files.single.name}')),
+    );
+  }
+
+  ImageProvider _avatarImage() {
+    final value = _avatarPath.trim();
+    if (value.isNotEmpty && File(value).existsSync()) {
+      return FileImage(File(value));
+    }
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return NetworkImage(value);
+    }
+    return const NetworkImage(
+      'https://cdn.pixabay.com/photo/2013/07/12/17/00/four-leaf-clover-151042_1280.png',
     );
   }
 

@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:book_reader/data/datasources/remote/api/membership_api.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MembershipProvider extends ChangeNotifier {
   final MembershipApi _membershipApi;
@@ -9,13 +13,19 @@ class MembershipProvider extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
   List<MembershipPackageModel> packages = [];
+  UserMembershipModel? currentPlan;
 
-  Future<void> loadPackages() async {
+  Future<void> loadPackages({int? userId}) async {
     try {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
       packages = await _membershipApi.getPackages();
+      if (userId != null) {
+        currentPlan =
+            await _membershipApi.getMyPlan(userId: userId) ??
+            await _loadCachedPlan(userId);
+      }
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -26,12 +36,41 @@ class MembershipProvider extends ChangeNotifier {
 
   Future<bool> subscribe(int packageId, {required int userId}) async {
     try {
-      await _membershipApi.subscribe(packageId, userId: userId);
+      currentPlan = await _membershipApi.subscribe(packageId, userId: userId);
+      await _cachePlan(userId, currentPlan!);
+      notifyListeners();
       return true;
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<File> _cacheFile(int userId) async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/membership_$userId.json');
+  }
+
+  Future<void> _cachePlan(int userId, UserMembershipModel plan) async {
+    final file = await _cacheFile(userId);
+    await file.writeAsString(jsonEncode(plan.toJson()));
+  }
+
+  Future<UserMembershipModel?> _loadCachedPlan(int userId) async {
+    try {
+      final file = await _cacheFile(userId);
+      if (!await file.exists()) return null;
+
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final plan = UserMembershipModel.fromJson(decoded);
+      final endDate = plan.endDate;
+      if (endDate != null && endDate.isBefore(DateTime.now())) return null;
+      return plan;
+    } catch (_) {
+      return null;
     }
   }
 }

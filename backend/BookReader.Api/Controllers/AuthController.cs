@@ -42,4 +42,29 @@ public class AuthController : ControllerBase
         var result = await _authService.GetMeAsync(token);
         return result.Success ? Ok(result) : Unauthorized(result);
     }
+
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateMe(UpdateProfileRequest request)
+    {
+        return await UpdateProfileFromBearerToken(request);
+    }
+
+    [HttpPost("me")]
+    public async Task<IActionResult> UpdateMePost(UpdateProfileRequest request)
+    {
+        return await UpdateProfileFromBearerToken(request);
+    }
+
+    private async Task<IActionResult> UpdateProfileFromBearerToken(UpdateProfileRequest request)
+    {
+        var authorizationHeader = Request.Headers.Authorization.ToString();
+        if (string.IsNullOrWhiteSpace(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
+        {
+            return Unauthorized(BookReader.Api.Helpers.ApiResponse<AuthResponse>.Fail("Missing bearer token."));
+        }
+
+        var token = authorizationHeader["Bearer ".Length..].Trim();
+        var result = await _authService.UpdateProfileAsync(token, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }
