@@ -1,6 +1,7 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
@@ -70,12 +71,9 @@ class _Signup extends State<Signup> {
                 icon: Icons.people_alt,
                 isPassword: false,
                 controller: fullName,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Vui long nhap ho ten';
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                    AppValidators.requiredText(v, 'ho ten') ??
+                    AppValidators.maxLength(v, 80, 'Ho ten'),
               ),
               const SizedBox(height: 30),
               FormInput(
@@ -83,12 +81,7 @@ class _Signup extends State<Signup> {
                 icon: Icons.lock,
                 isPassword: false,
                 controller: mail,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Vui long nhap email';
-                  }
-                  return null;
-                },
+                validator: AppValidators.email,
               ),
               const SizedBox(height: 30),
               FormInput(
@@ -96,12 +89,7 @@ class _Signup extends State<Signup> {
                 icon: Icons.lock,
                 isPassword: true,
                 controller: passWord,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Vui long nhap mat khau';
-                  }
-                  return null;
-                },
+                validator: AppValidators.password,
               ),
               const SizedBox(height: 30),
               FormInput(
@@ -109,15 +97,8 @@ class _Signup extends State<Signup> {
                 icon: Icons.lock,
                 isPassword: true,
                 controller: confirmPassword,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Vui long nhap lai mat khau';
-                  }
-                  if (v != passWord.text.trim()) {
-                    return 'Mat khau nhap lai khong dung';
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                    AppValidators.confirmPassword(v, passWord.text),
               ),
               const SizedBox(height: 30),
               if (isLoading)

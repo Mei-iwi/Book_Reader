@@ -1,6 +1,7 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
@@ -63,12 +64,7 @@ class _Signin extends State<Signin> {
               icon: Icons.mail,
               isPassword: false,
               controller: mail,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'Email khong duoc de trong';
-                }
-                return null;
-              },
+              validator: AppValidators.emailOrPhone,
             ),
             const SizedBox(height: 30),
             FormInput(
@@ -76,12 +72,7 @@ class _Signin extends State<Signin> {
               icon: Icons.lock,
               isPassword: true,
               controller: password,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'Mat khau khong duoc de trong';
-                }
-                return null;
-              },
+              validator: AppValidators.password,
             ),
             Padding(
               padding: const EdgeInsets.only(right: 80),

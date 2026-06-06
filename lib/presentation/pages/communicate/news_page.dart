@@ -127,6 +127,7 @@ class _NewsPageState extends State<NewsPage> {
       child: GestureDetector(
         onTap: () async {
           final uri = Uri.parse(news.link);
+          final messenger = ScaffoldMessenger.of(context);
           // Hàm mở bài viết LitHub bằng trình duyệt bên ngoài hoặc WebView
           final canLaunch = await canLaunchUrl(uri);
           if (!context.mounted) return;
@@ -134,7 +135,7 @@ class _NewsPageState extends State<NewsPage> {
           if (canLaunch) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               const SnackBar(content: Text('Không thể mở bài viết này')),
             );
           }

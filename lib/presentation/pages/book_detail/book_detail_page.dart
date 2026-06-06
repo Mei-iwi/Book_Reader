@@ -4,6 +4,7 @@ import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/data/datasources/local/dao/favorite_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,17 +25,20 @@ class _BookDetailPageState extends State<BookDetailPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _bookId = ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
-    _bookFuture = context.read<BookRepository>().getBookDetail(_bookId);
+    _bookFuture = _bookId.trim().isEmpty
+        ? Future<Book>.error('Ma sach khong hop le.')
+        : context.read<BookRepository>().getBookDetail(_bookId);
     _checkFavorite();
   }
 
   Future<void> _checkFavorite() async {
     if (_bookId.isNotEmpty) {
       final isFav = await FavoriteDao(AppDatabase.instance).isFavorite(_bookId);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isFavorite = isFav;
         });
+      }
     }
   }
 
@@ -137,7 +141,18 @@ class _BookDetailContent extends StatelessWidget {
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () async {
-              await context.read<LibraryProvider>().addRemoteBook(book);
+              final userId = context.read<AuthProvider>().currentUser?.userId;
+              if (userId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vui long dang nhap lai.')),
+                );
+                return;
+              }
+
+              await context.read<LibraryProvider>().addRemoteBook(
+                book,
+                userId: userId,
+              );
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Đã thêm vào tủ sách')),
@@ -157,6 +172,7 @@ class _BookDetailContent extends StatelessWidget {
                     total: book.pageCount > 0 ? book.pageCount : 1,
                     title: book.title,
                     bookId: book.id,
+                    userId: context.read<AuthProvider>().currentUser?.userId,
                     webReaderLink: book.webReaderLink,
                     previewLink: book.previewLink,
                     localFilePath: book.localFilePath,

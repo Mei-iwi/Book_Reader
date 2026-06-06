@@ -11,6 +11,7 @@ import 'package:book_reader/presentation/pages/comment/comments.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class Reader extends StatefulWidget {
@@ -18,6 +19,7 @@ class Reader extends StatefulWidget {
   final int total;
   final String title;
   final String? bookId;
+  final int? userId;
 
   /// File text tải/lưu trong máy.
   /// Ví dụ: /data/user/0/.../book.txt
@@ -42,6 +44,7 @@ class Reader extends StatefulWidget {
     required this.total,
     required this.title,
     this.bookId,
+    this.userId,
     this.localFilePath,
     this.assetPath,
     this.contentText,
@@ -81,6 +84,11 @@ class _Reader extends State<Reader> {
     return localPath.toLowerCase().endsWith('.txt');
   }
 
+  bool get _hasExternalLocalFile {
+    final localPath = widget.localFilePath?.trim().toLowerCase() ?? '';
+    return localPath.endsWith('.pdf') || localPath.endsWith('.epub');
+  }
+
   bool get _shouldUseWebView {
     final localPath = widget.localFilePath?.trim() ?? '';
 
@@ -114,6 +122,7 @@ class _Reader extends State<Reader> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSavedProgress();
       _saveProgress();
     });
   }
@@ -173,11 +182,11 @@ class _Reader extends State<Reader> {
         }
 
         if (lowerPath.endsWith('.pdf')) {
-          return 'File PDF đã được tải xuống:\n$localPath\n\nReader hiện tại chưa render PDF trực tiếp. Bạn nên tạo thêm PdfReaderPage bằng package đọc PDF.';
+          return 'File PDF da duoc luu tren thiet bi:\n$localPath\n\nBan co the mo file bang ung dung doc PDF ben ngoai.';
         }
 
         if (lowerPath.endsWith('.epub')) {
-          return 'File EPUB đã được tải xuống:\n$localPath\n\nReader hiện tại chưa render EPUB trực tiếp. Bạn cần thêm thư viện đọc EPUB.';
+          return 'File EPUB da duoc luu tren thiet bi:\n$localPath\n\nBan co the mo file bang ung dung doc EPUB ben ngoai.';
         }
 
         return 'File đã được tải xuống:\n$localPath\n\nĐịnh dạng này chưa được Reader hỗ trợ đọc trực tiếp.';
@@ -196,6 +205,20 @@ class _Reader extends State<Reader> {
     return 'Sách này chưa có nội dung để đọc.';
   }
 
+  Future<void> _loadSavedProgress() async {
+    final bookId = widget.bookId;
+    if (bookId == null || bookId.trim().isEmpty) return;
+
+    final progress = await _readingProgressDao.getProgress(bookId);
+    if (!mounted || progress == null) return;
+
+    final savedPage = progress['current_page'] as int? ?? widget.value;
+    final totalPage = widget.total <= 0 ? 1 : widget.total;
+    setState(() {
+      newvalue = savedPage.clamp(1, totalPage);
+    });
+  }
+
   Future<void> _saveProgress() async {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
@@ -210,14 +233,15 @@ class _Reader extends State<Reader> {
     );
 
     final backendBookId = int.tryParse(bookId);
-    if (backendBookId == null) return;
+    final userId = widget.userId;
+    if (backendBookId == null || userId == null) return;
 
     try {
       await _readingProgressApi.saveProgress(
         bookId: backendBookId,
         currentPage: newvalue,
         progressPercent: progressPercent,
-        userId: 1,
+        userId: userId,
       );
     } catch (e) {
       debugPrint('SYNC PROGRESS ERROR: $e');
@@ -231,13 +255,14 @@ class _Reader extends State<Reader> {
     await _bookmarkDao.addBookmark(bookId: bookId, page: newvalue);
 
     final backendBookId = int.tryParse(bookId);
-    if (backendBookId == null) return;
+    final userId = widget.userId;
+    if (backendBookId == null || userId == null) return;
 
     try {
       await _bookmarkApi.addBookmark(
         bookId: backendBookId,
         page: newvalue,
-        userId: 1,
+        userId: userId,
       );
     } catch (e) {
       debugPrint('SYNC BOOKMARK ERROR: $e');
@@ -475,6 +500,20 @@ class _Reader extends State<Reader> {
     );
   }
 
+  Future<void> _openLocalFileExternal() async {
+    final localPath = widget.localFilePath?.trim() ?? '';
+    if (localPath.isEmpty) return;
+
+    final result = await OpenFilex.open(localPath);
+    if (!mounted) return;
+
+    if (result.type != ResultType.done) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Khong the mo file: ${result.message}')),
+      );
+    }
+  }
+
   Widget _buildWebReader() {
     final controller = _webViewController;
 
@@ -492,6 +531,34 @@ class _Reader extends State<Reader> {
   }
 
   Widget _buildTextReader() {
+    if (_hasExternalLocalFile) {
+      return FutureBuilder<String>(
+        future: _contentFuture,
+        builder: (context, snapshot) {
+          final message = snapshot.data ?? 'File chua san sang de mo.';
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.insert_drive_file, size: 64),
+                  const SizedBox(height: 16),
+                  Text(message, textAlign: TextAlign.center),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: _openLocalFileExternal,
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('Mo bang ung dung khac'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     return Stack(
       children: [
         Padding(

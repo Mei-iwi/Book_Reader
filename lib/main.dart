@@ -11,8 +11,10 @@ import 'package:book_reader/data/datasources/remote/api/membership_api.dart';
 import 'package:book_reader/domain/repositories/auth_repository_impl.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/domain/repositories/book_repository_impl.dart';
+import 'package:book_reader/domain/usecases/search_books.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
+import 'package:book_reader/presentation/state/book_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:book_reader/presentation/state/membership_provider.dart';
 import 'package:book_reader/presentation/state/news_provider.dart';
@@ -45,6 +47,9 @@ void main() {
           create: (_) => AuthProvider(authRepository, sessionStorage),
         ),
         ChangeNotifierProvider(create: (_) => HomeBookProvider(bookRepository)),
+        ChangeNotifierProvider(
+          create: (_) => BookProvider(SearchBooks(bookRepository)),
+        ),
         ChangeNotifierProvider(create: (context) => NewsProvider()),
         ChangeNotifierProvider(
           create: (_) => LibraryProvider(bookRepository, libraryApi),
