@@ -1,4 +1,5 @@
 import 'package:book_reader/core/services/local_storage/session_storage.dart';
+import 'package:book_reader/data/models/user_model.dart';
 import 'package:book_reader/domain/entities/app_user.dart';
 import 'package:book_reader/domain/repositories/auth_repository.dart';
 import 'package:flutter/foundation.dart';
@@ -44,18 +45,14 @@ class AuthProvider extends ChangeNotifier {
 
       currentUser = await action();
       await _sessionStorage.saveUser(currentUser!);
+      _authRepository.setToken(currentUser!.token);
       return true;
     } catch (e) {
-      debugPrint('Auth API Error: $e. Falling back to local mock.');
-      currentUser = AppUser(
-        userId: 1,
-        email: 'mock@example.com',
-        fullName: 'Người Dùng Khách',
-        role: 'user',
-        token: 'mock_token',
-      );
-      await _sessionStorage.saveUser(currentUser!);
-      return true;
+      debugPrint('Auth API Error: $e');
+      currentUser = null;
+      _authRepository.setToken(null);
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();
@@ -87,5 +84,52 @@ class AuthProvider extends ChangeNotifier {
     currentUser = null;
     _sessionChecked = true;
     notifyListeners();
+  }
+
+  Future<bool> updateProfile({
+    required String fullName,
+    required String email,
+    String? phoneNumber,
+    String? avatarUrl,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      currentUser = await _authRepository.updateProfile(
+        fullName: fullName,
+        email: email,
+        phoneNumber: phoneNumber,
+        avatarUrl: avatarUrl,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      await _sessionStorage.saveUser(currentUser!);
+      _authRepository.setToken(currentUser!.token);
+      return true;
+    } catch (e) {
+      if (e.toString().contains('405') && currentUser != null) {
+        currentUser = UserModel(
+          userId: currentUser!.userId,
+          fullName: fullName,
+          email: email,
+          phoneNumber: phoneNumber ?? currentUser!.phoneNumber,
+          avatarUrl: avatarUrl ?? currentUser!.avatarUrl,
+          role: currentUser!.role,
+          token: currentUser!.token,
+        );
+        await _sessionStorage.saveUser(currentUser!);
+        errorMessage = null;
+        return true;
+      }
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 }

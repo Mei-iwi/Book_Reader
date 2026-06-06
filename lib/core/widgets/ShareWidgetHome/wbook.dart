@@ -1,5 +1,4 @@
 import 'package:book_reader/core/widgets/ShareFunction/check_image.dart';
-import 'package:book_reader/presentation/pages/details/details.dart';
 import 'package:flutter/material.dart';
 
 Widget wbook({
@@ -9,39 +8,67 @@ Widget wbook({
   required author,
   required VoidCallback func,
   required VoidCallback onDownload,
+  bool isFree = true,
 }) {
   return InkWell(
     onTap: () {
-      func;
       showBookSnackBar(
         context,
         title: title,
         author: author,
         url: url,
+        onRead: func,
         onDownload: onDownload,
       );
     },
     child: Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Container(
+      child: SizedBox(
         width: 120,
-        height: 180,
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              offset: Offset(2, 4),
-              blurRadius: 12,
+        child: Column(
+          children: [
+            Container(
+              width: 120,
+              height: 180,
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    offset: Offset(2, 4),
+                    blurRadius: 12,
+                  ),
+                ],
+                border: Border.all(width: 1),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: checkSourceImage(urlImage: url)
+                    ? Image.asset(url, fit: BoxFit.cover)
+                    : Image.network(
+                        url.replaceFirst('http://', 'https://'),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) {
+                          return Image.asset(
+                            'assets/sample_data/templateImages/chuatenhan.jpg',
+                            fit: BoxFit.cover,
+                          );
+                        },
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isFree ? 'Miễn phí' : 'Có phí',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isFree ? Colors.green : Colors.red,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
-          border: Border.all(width: 1),
-          borderRadius: BorderRadius.circular(15),
-          image: DecorationImage(
-            fit: BoxFit.cover,
-            image: (checkSourceImage(urlImage: url)
-                ? AssetImage(url)
-                : NetworkImage(url.replaceFirst('http://', 'https://'))),
-          ),
         ),
       ),
     ),
@@ -53,6 +80,7 @@ void showBookSnackBar(
   required String title,
   required author,
   required url,
+  VoidCallback? onRead,
   VoidCallback? onDownload,
 }) {
   ScaffoldMessenger.of(context)
@@ -126,22 +154,7 @@ void showBookSnackBar(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => Details(
-                              title: title,
-                              url: url,
-                              value: 1,
-                              total: 3636,
-                              assetPath:
-                                  'assets/sample_data/templatecontentbooks/hoang_tu_be_demo.txt',
-                              author: author,
-                              views: 0,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: onRead,
 
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(120, 40),

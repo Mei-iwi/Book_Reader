@@ -29,6 +29,52 @@ class MembershipPackageModel {
   }
 }
 
+class UserMembershipModel {
+  final int id;
+  final int userId;
+  final int membershipPackageId;
+  final String packageName;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String status;
+
+  const UserMembershipModel({
+    required this.id,
+    required this.userId,
+    required this.membershipPackageId,
+    required this.packageName,
+    required this.startDate,
+    required this.endDate,
+    required this.status,
+  });
+
+  factory UserMembershipModel.fromJson(Map<String, dynamic> json) {
+    return UserMembershipModel(
+      id: json['id'] is int ? json['id'] as int : 0,
+      userId: json['userId'] is int ? json['userId'] as int : 0,
+      membershipPackageId: json['membershipPackageId'] is int
+          ? json['membershipPackageId'] as int
+          : 0,
+      packageName: json['packageName']?.toString() ?? '',
+      startDate: DateTime.tryParse(json['startDate']?.toString() ?? ''),
+      endDate: DateTime.tryParse(json['endDate']?.toString() ?? ''),
+      status: json['status']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'membershipPackageId': membershipPackageId,
+      'packageName': packageName,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'status': status,
+    };
+  }
+}
+
 class MembershipApi {
   final ApiClient _apiClient;
 
@@ -48,11 +94,25 @@ class MembershipApi {
         .toList();
   }
 
-  Future<void> subscribe(int packageId, {int? userId}) async {
-    await _apiClient.post(
+  Future<UserMembershipModel> subscribe(int packageId, {int? userId}) async {
+    final data = await _apiClient.post(
       ApiConstants.backendBaseUrl,
       '/membership/subscribe/$packageId',
       queryParameters: userId == null ? null : {'userId': userId.toString()},
     );
+    return UserMembershipModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<UserMembershipModel?> getMyPlan({int? userId}) async {
+    try {
+      final data = await _apiClient.get(
+        ApiConstants.backendBaseUrl,
+        '/membership/my-plan',
+        queryParameters: userId == null ? null : {'userId': userId.toString()},
+      );
+      return UserMembershipModel.fromJson(data as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
   }
 }

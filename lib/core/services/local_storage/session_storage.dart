@@ -19,6 +19,8 @@ class SessionStorage {
       'userId': user.userId,
       'fullName': user.fullName,
       'email': user.email,
+      'phoneNumber': user.phoneNumber,
+      'avatarUrl': user.avatarUrl,
       'role': user.role,
       'token': user.token,
     };

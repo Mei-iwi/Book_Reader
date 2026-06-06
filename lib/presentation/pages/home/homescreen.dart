@@ -1,7 +1,7 @@
 import 'package:book_reader/presentation/pages/communicate/news_page.dart';
 import 'package:book_reader/presentation/pages/home/home.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
-import 'package:book_reader/presentation/state/category/category_page.dart';
+import 'package:book_reader/presentation/pages/library/library_page.dart';
 import 'package:flutter/material.dart';
 
 class Homescreen extends StatefulWidget {
@@ -14,12 +14,6 @@ class Homescreen extends StatefulWidget {
 class _Homescreen extends State<Homescreen> {
   final search = TextEditingController();
   int _index = 0;
-  final List<Widget> _pages = [
-    Home(),
-    CategoryPage(),
-    const NewsPage(),
-    Myprofile(),
-  ];
 
   final List<BottomNavigationBarItem> _navItems = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -39,11 +33,18 @@ class _Homescreen extends State<Homescreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      Home(onNavigateTab: (index) => setState(() => _index = index)),
+      const LibraryPage(),
+      const NewsPage(),
+      Myprofile(),
+    ];
+
     return Scaffold(
       drawer: Drawer(
         child: ListView(children: [ListTile(title: Text("Menu"))]),
       ),
-      body: IndexedStack(index: _index, children: _pages),
+      body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (i) => setState(() {

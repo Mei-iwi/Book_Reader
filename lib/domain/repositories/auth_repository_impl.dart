@@ -31,4 +31,23 @@ class AuthRepositoryImpl implements AuthRepository {
       confirmPassword: confirmPassword,
     );
   }
+
+  @override
+  Future<AppUser> updateProfile({
+    required String fullName,
+    required String email,
+    String? phoneNumber,
+    String? avatarUrl,
+    String? password,
+    String? confirmPassword,
+  }) {
+    return _authApi.updateProfile(
+      fullName: fullName,
+      email: email,
+      phoneNumber: phoneNumber,
+      avatarUrl: avatarUrl,
+      password: password,
+      confirmPassword: confirmPassword,
+    );
+  }
 }
