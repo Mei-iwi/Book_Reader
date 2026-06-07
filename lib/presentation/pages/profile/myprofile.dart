@@ -44,11 +44,18 @@ class _Myprofile extends State<Myprofile> {
     final profDao = ProfileDao(db);
 
     final favs = await favDao.getAllFavorites();
-    final hist = await progDao.getAllProgress();
+    await progDao.pruneOldProgress(keep: 10);
+    final hist = await progDao.getRecentProgress(limit: 10);
 
     Map<String, dynamic>? prof;
     if (user != null) {
       prof = await profDao.getProfile(user.userId.toString());
+    }
+
+    if (mounted) {
+      await context.read<LibraryProvider>().loadOfflineBooks(
+        userId: user?.userId,
+      );
     }
 
     if (mounted) {
@@ -86,9 +93,10 @@ class _Myprofile extends State<Myprofile> {
 
     final downloadCount = libraryProvider.offlineBooks.length;
     final readingCount = _history.length;
-    final readCount = _history
-        .where((h) => h['progress_percent'] == 100.0)
-        .length;
+    final readCount = _history.where((h) {
+      final percent = h['progress_percent'];
+      return percent is num && percent >= 100;
+    }).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -295,7 +303,6 @@ class _Myprofile extends State<Myprofile> {
                                       );
                                       _loadData();
                                     },
-                                    rateFavourite: 0,
                                   );
                                 }).toList(),
                               ),
@@ -346,6 +353,8 @@ class _Myprofile extends State<Myprofile> {
                                       hist,
                                       book,
                                     ),
+                                    onDelete: () =>
+                                        _deleteReadingProgress(context, bookId),
                                   );
                                 }).toList(),
                               ),
@@ -376,6 +385,21 @@ class _Myprofile extends State<Myprofile> {
     return null;
   }
 
+  Future<void> _deleteReadingProgress(
+    BuildContext context,
+    String bookId,
+  ) async {
+    if (bookId.isEmpty) return;
+
+    await ReadingProgressDao(AppDatabase.instance).deleteProgress(bookId);
+    await _loadData();
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Da xoa tien do doc')));
+  }
+
   Future<void> _openReaderFromHistory(
     BuildContext context,
     Map<String, dynamic> history,
@@ -398,7 +422,7 @@ class _Myprofile extends State<Myprofile> {
     final currentPage = history['current_page'] is int
         ? history['current_page'] as int
         : 1;
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Reader(
@@ -415,5 +439,9 @@ class _Myprofile extends State<Myprofile> {
         ),
       ),
     );
+
+    if (mounted) {
+      _loadData();
+    }
   }
 }

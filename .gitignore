@@ -50,32 +50,8 @@ app.*.map.json
 # Environment / API keys
 .env
 .env.*
-!.env.example
-
-# Local app config with API keys
-lib/config/env.dart.dart_tool/
-build/
-.env
 *.env
-.dart_tool/
-build/
-.env
-*.env
-lib/config/env.dart
-.env
-*.env
-build/
-.dart_tool/
-
-
-# Environment / API keys
-.env
-.env.*
 !.env.example
 
 # Local app config with API keys
 lib/config/env.dart
-.dart_tool/
-build/
-.env
-*.env

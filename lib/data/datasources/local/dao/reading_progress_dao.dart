@@ -57,4 +57,47 @@ class ReadingProgressDao {
       orderBy: 'updated_at DESC',
     );
   }
+
+  Future<List<Map<String, dynamic>>> getRecentProgress({int limit = 10}) async {
+    final db = await _appDatabase.database;
+    return await db.query(
+      TableNames.readingProgress,
+      orderBy: 'updated_at DESC',
+      limit: limit,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getContinueProgress({
+    int limit = 5,
+  }) async {
+    final db = await _appDatabase.database;
+    return await db.query(
+      TableNames.readingProgress,
+      where: 'progress_percent > ? AND progress_percent < ?',
+      whereArgs: [0, 100],
+      orderBy: 'progress_percent DESC, updated_at DESC',
+      limit: limit,
+    );
+  }
+
+  Future<void> deleteProgress(String bookId) async {
+    final db = await _appDatabase.database;
+    await db.delete(
+      TableNames.readingProgress,
+      where: 'book_id = ?',
+      whereArgs: [bookId],
+    );
+  }
+
+  Future<void> pruneOldProgress({int keep = 10}) async {
+    if (keep < 1) return;
+
+    final db = await _appDatabase.database;
+    await db.delete(
+      TableNames.readingProgress,
+      where:
+          'id NOT IN (SELECT id FROM ${TableNames.readingProgress} ORDER BY updated_at DESC LIMIT ?)',
+      whereArgs: [keep],
+    );
+  }
 }

@@ -6,6 +6,7 @@ Widget bookReading({
   required String name,
   required double percent,
   VoidCallback? onTap,
+  VoidCallback? onDelete,
 }) {
   return Builder(
     builder: (context) {
@@ -36,9 +37,7 @@ Widget bookReading({
                     borderRadius: BorderRadius.circular(8),
                     image: DecorationImage(
                       fit: BoxFit.cover,
-                      image: checkSourceImage(urlImage: url)
-                          ? AssetImage(url)
-                          : NetworkImage(url),
+                      image: _coverImageProvider(url),
                     ),
                   ),
                 ),
@@ -61,6 +60,14 @@ Widget bookReading({
                     ],
                   ),
                 ),
+                if (onDelete != null) ...[
+                  SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Xoa tien do doc',
+                    onPressed: onDelete,
+                    icon: Icon(Icons.delete_outline, color: Colors.red),
+                  ),
+                ],
               ],
             ),
           ),
@@ -68,6 +75,21 @@ Widget bookReading({
       );
     },
   );
+}
+
+ImageProvider _coverImageProvider(String url) {
+  final value = url.trim();
+  if (value.isEmpty || _isBrokenDemoUrl(value)) {
+    return const AssetImage('assets/sample_data/templateImages/chuatenhan.jpg');
+  }
+  return checkSourceImage(urlImage: value)
+      ? AssetImage(value)
+      : NetworkImage(value.replaceFirst('http://', 'https://'));
+}
+
+bool _isBrokenDemoUrl(String url) {
+  final uri = Uri.tryParse(url);
+  return uri?.host == 'example.com';
 }
 
 Widget percentBook(double percent, BuildContext context) {

@@ -50,6 +50,7 @@ Flutter UI -> Provider -> Repository -> API/SQLite -> ASP.NET Core -> SQL Server
 - Thư viện có ListView và GridView thật trong app flow.
 - Import file `txt`, `pdf`, `epub`.
 - Reader hỗ trợ WebView, TXT local, mở PDF/EPUB bằng ứng dụng ngoài.
+- Reader hỗ trợ sách full text từ Gutendex/Project Gutenberg: tải `text/plain`, cache thành `.txt`, chia trang trong app và dùng nút previous/next.
 - Lưu reading progress và bookmark bằng SQLite, sync backend khi có book id/user id.
 - Bình luận local bằng SQLite.
 - Favorite và reading history trong Profile.
@@ -63,19 +64,33 @@ flutter pub get
 flutter run
 ```
 
-Base URL backend cho Android emulator nằm tại:
+Nếu cần Google Books API key, truyền bằng `--dart-define` thay vì commit file env local:
 
-```text
-lib/core/constants/api_constants.dart
+```powershell
+flutter run --dart-define=GOOGLE_BOOKS_API_KEY=your_key_here
 ```
 
-Mặc định:
+Base URL backend của Flutter nằm tại:
 
 ```text
-http://10.0.2.2:5102/api
+lib/config/backend_environment.dart
 ```
 
-Nếu chạy trên điện thoại thật, đổi `10.0.2.2` thành IP LAN của máy chạy backend.
+Các mode có sẵn:
+
+```text
+BackendRunTarget.emulator    -> http://10.0.2.2:5102/api
+BackendRunTarget.physicalUsb -> http://127.0.0.1:5102/api
+BackendRunTarget.physicalLan -> http://<IP-LAN>:5102/api
+```
+
+Nếu chạy trên điện thoại thật qua USB, chạy thêm:
+
+```powershell
+adb reverse tcp:5102 tcp:5102
+```
+
+Nếu chạy qua Wi-Fi/LAN, đổi `physicalLanHost` thành IP của máy chạy backend và chạy backend bằng profile `lan`.
 
 ## Cài đặt backend
 
@@ -96,6 +111,12 @@ Chạy backend:
 
 ```powershell
 dotnet run --project backend\BookReader.Api\BookReader.Api.csproj
+```
+
+Chạy backend cho điện thoại thật qua Wi-Fi/LAN:
+
+```powershell
+dotnet run --project backend\BookReader.Api\BookReader.Api.csproj --launch-profile lan
 ```
 
 Swagger:
@@ -173,6 +194,6 @@ Chi tiết xem `docs/final_validation_report.md`.
 ## Hạn chế còn lại
 
 - Firebase chưa chạy thật vì thiếu cấu hình `firebase_options.dart`, `google-services.json`, `GoogleService-Info.plist`.
-- PDF/EPUB hiện mở bằng app ngoài, chưa render nội bộ trong Flutter.
+- PDF remote thử render bằng WebView trong app; PDF/EPUB local vẫn mở bằng app ngoài.
 - Một số file/provider cũ vẫn tồn tại để tránh rename/delete nhiều trong giai đoạn hoàn thiện.
 - Một số text cũ trong source có thể cần chuẩn hóa encoding nếu tiếp tục phát triển.

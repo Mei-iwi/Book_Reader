@@ -46,7 +46,7 @@ class BookModel extends Book {
               .toList() ??
           [],
       description: volumeInfo['description']?.toString() ?? '',
-      thumbnailUrl: imageLinks['thumbnail']?.toString() ?? '',
+      thumbnailUrl: _safeImageUrl(imageLinks['thumbnail']?.toString() ?? ''),
       categories:
           (volumeInfo['categories'] as List<dynamic>?)
               ?.map((e) => e.toString())
@@ -84,7 +84,7 @@ class BookModel extends Book {
       title: json['title']?.toString() ?? 'No title',
       authors: readStringList(json['authors']),
       description: json['description']?.toString() ?? '',
-      thumbnailUrl: json['thumbnailUrl']?.toString() ?? '',
+      thumbnailUrl: _safeImageUrl(json['thumbnailUrl']?.toString() ?? ''),
       categories: readStringList(json['categories']),
       pageCount: json['pageCount'] is int ? json['pageCount'] as int : 0,
       language: json['language']?.toString() ?? '',
@@ -116,7 +116,7 @@ class BookModel extends Book {
       title: map['title']?.toString() ?? '',
       authors: _decodeStringList(map['authors']),
       description: map['description']?.toString() ?? '',
-      thumbnailUrl: map['thumbnail_url']?.toString() ?? '',
+      thumbnailUrl: _safeImageUrl(map['thumbnail_url']?.toString() ?? ''),
       categories: _decodeStringList(map['categories']),
       pageCount: map['page_count'] is int ? map['page_count'] as int : 0,
       language: map['language']?.toString() ?? '',
@@ -138,7 +138,7 @@ class BookModel extends Book {
       'title': title,
       'authors': jsonEncode(authors),
       'description': description,
-      'thumbnail_url': thumbnailUrl,
+      'thumbnail_url': _safeImageUrl(thumbnailUrl),
       'categories': jsonEncode(categories),
       'page_count': pageCount,
       'language': language,
@@ -186,7 +186,7 @@ class BookModel extends Book {
       title: book.title,
       authors: book.authors,
       description: book.description,
-      thumbnailUrl: book.thumbnailUrl,
+      thumbnailUrl: _safeImageUrl(book.thumbnailUrl),
       categories: book.categories,
       pageCount: book.pageCount,
       language: book.language,
@@ -199,5 +199,17 @@ class BookModel extends Book {
       isDownloaded: isDownloaded ?? book.isDownloaded,
       isFree: book.isFree,
     );
+  }
+
+  static String _safeImageUrl(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return '';
+
+    final uri = Uri.tryParse(text);
+    if (uri == null) return '';
+
+    if (uri.host == 'example.com') return '';
+
+    return text;
   }
 }

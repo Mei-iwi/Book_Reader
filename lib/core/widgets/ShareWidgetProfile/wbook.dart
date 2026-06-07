@@ -6,7 +6,6 @@ Widget wbook({
   required String title,
   required author,
   required VoidCallback func,
-  required rateFavourite,
 }) {
   return InkWell(
     onTap: () {
@@ -32,19 +31,20 @@ Widget wbook({
               borderRadius: BorderRadius.circular(15),
               image: DecorationImage(
                 fit: BoxFit.cover,
-                image: (checkSourceImage(urlImage: url)
-                    ? AssetImage(url)
-                    : NetworkImage(url)),
+                image: _coverImageProvider(url),
               ),
             ),
           ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Icon(Icons.favorite, color: Colors.red),
-              SizedBox(width: 5),
-              Text(rateFavourite.toString(), style: TextStyle(fontSize: 15)),
-            ],
+          SizedBox(height: 8),
+          SizedBox(
+            width: 120,
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -55,6 +55,21 @@ Widget wbook({
 bool checkSourceImage({required String urlImage}) {
   final isAsset = urlImage.startsWith('assets/');
   return isAsset ? true : false;
+}
+
+ImageProvider _coverImageProvider(String url) {
+  final value = url.trim();
+  if (value.isEmpty || _isBrokenDemoUrl(value)) {
+    return const AssetImage('assets/sample_data/templateImages/chuatenhan.jpg');
+  }
+  return checkSourceImage(urlImage: value)
+      ? AssetImage(value)
+      : NetworkImage(value.replaceFirst('http://', 'https://'));
+}
+
+bool _isBrokenDemoUrl(String url) {
+  final uri = Uri.tryParse(url);
+  return uri?.host == 'example.com';
 }
 
 void showBookSnackBar(
@@ -94,9 +109,7 @@ void showBookSnackBar(
                 borderRadius: BorderRadius.circular(15),
                 image: DecorationImage(
                   fit: BoxFit.cover,
-                  image: (checkSourceImage(urlImage: url)
-                      ? AssetImage(url)
-                      : NetworkImage(url)),
+                  image: _coverImageProvider(url),
                 ),
               ),
             ),

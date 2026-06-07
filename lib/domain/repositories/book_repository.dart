@@ -10,6 +10,7 @@ abstract class BookRepository {
     int maxResults = 10,
   });
   Future<Book> getBookDetail(String bookId);
+  Future<String> cacheReadableText(Book book);
 
   Future<void> saveBookOffline(Book book);
   Future<List<Book>> getOfflineBooks();

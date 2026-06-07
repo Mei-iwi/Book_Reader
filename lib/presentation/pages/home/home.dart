@@ -1,9 +1,12 @@
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/form.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
+import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
+import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +29,7 @@ class _Home extends State<Home> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeBookProvider>().loadHomeData();
+      context.read<HomeBookProvider>().loadHomeData(forceRefresh: true);
     });
   }
 
@@ -67,10 +70,30 @@ class _Home extends State<Home> {
       drawer: Drawer(
         child: ListView(
           children: [
-            const DrawerHeader(
-              child: Text(
-                'Book Reader',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            DrawerHeader(
+              padding: EdgeInsets.zero,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset('assets/images/banner.png', fit: BoxFit.cover),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  const Positioned(
+                    left: 18,
+                    bottom: 18,
+                    child: Text(
+                      'Book Reader',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             ListTile(
@@ -172,6 +195,7 @@ Widget _buildBody(HomeBookProvider provider) {
             title: 'Continue...',
             books: provider.continueBooks,
             emptyMessage: 'Chua co sach dang doc tiep.',
+            openFromProgress: true,
           ),
           _buiderBookSection(
             title: 'From Library',
@@ -196,6 +220,7 @@ Widget _buiderBookSection({
   required List<Book> books,
   String emptyMessage =
       'Khong tim thay sach hoac Google Books dang gioi han truy cap.',
+  bool openFromProgress = false,
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,10 +231,7 @@ Widget _buiderBookSection({
       ],
 
       if (books.isEmpty)
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(emptyMessage),
-        )
+        Padding(padding: const EdgeInsets.all(12), child: Text(emptyMessage))
       else
         SizedBox(
           height: 230,
@@ -229,7 +251,12 @@ Widget _buiderBookSection({
                     ? book.authors.join(', ')
                     : "Unknow",
                 isFree: book.isFree,
-                func: () {
+                func: () async {
+                  if (openFromProgress) {
+                    await _openReaderFromProgress(context, book);
+                    return;
+                  }
+
                   Navigator.pushNamed(
                     context,
                     '/book-detail',
@@ -267,6 +294,34 @@ Widget _buiderBookSection({
           ),
         ),
     ],
+  );
+}
+
+Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
+  final progress = await ReadingProgressDao(
+    AppDatabase.instance,
+  ).getProgress(book.id);
+  final currentPageValue = progress?['current_page'];
+  final currentPage = currentPageValue is num ? currentPageValue.toInt() : 1;
+
+  if (!context.mounted) return;
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => Reader(
+        value: currentPage <= 0 ? 1 : currentPage,
+        total: book.pageCount > 0 ? book.pageCount : 1,
+        title: book.title,
+        bookId: book.id,
+        userId: context.read<AuthProvider>().currentUser?.userId,
+        localFilePath: book.localFilePath,
+        webReaderLink: book.webReaderLink,
+        previewLink: book.previewLink,
+        pdfDownloadLink: book.pdfDownloadLink,
+        epubDownloadLink: book.epubDownloadLink,
+      ),
+    ),
   );
 }
 
