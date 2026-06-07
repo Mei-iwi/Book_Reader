@@ -1,11 +1,13 @@
+import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:flutter/foundation.dart';
 
 class HomeBookProvider extends ChangeNotifier {
   final BookRepository _bookRepository;
+  final ReadingProgressDao _readingProgressDao;
 
-  HomeBookProvider(this._bookRepository);
+  HomeBookProvider(this._bookRepository, this._readingProgressDao);
 
   bool isLoading = false;
   bool _homeLoaded = false;
@@ -21,6 +23,7 @@ class HomeBookProvider extends ChangeNotifier {
   Future<void> loadHomeData() async {
     if (_homeLoaded) {
       debugPrint('Home data already loaded. Skip API call.');
+      await _refreshLocalHomeData();
       return;
     }
 

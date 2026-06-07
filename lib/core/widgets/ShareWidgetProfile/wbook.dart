@@ -7,6 +7,7 @@ Widget wbook({
   required author,
   required VoidCallback func,
   required rateFavourite,
+  bool showFavoriteCount = true,
 }) {
   return InkWell(
     onTap: () {
@@ -38,14 +39,16 @@ Widget wbook({
               ),
             ),
           ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Icon(Icons.favorite, color: Colors.red),
-              SizedBox(width: 5),
-              Text(rateFavourite.toString(), style: TextStyle(fontSize: 15)),
-            ],
-          ),
+          if (showFavoriteCount) ...[
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.favorite, color: Colors.red),
+                SizedBox(width: 5),
+                Text(rateFavourite.toString(), style: TextStyle(fontSize: 15)),
+              ],
+            ),
+          ],
         ],
       ),
     ),

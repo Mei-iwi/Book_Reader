@@ -37,7 +37,7 @@ class _LibraryPageState extends State<LibraryPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Download',
+          'Library',
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
         ),
         actions: [

@@ -61,6 +61,14 @@ Widget bookReading({
                     ],
                   ),
                 ),
+                if (onDelete != null) ...[
+                  SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Xóa tiến độ đọc',
+                    onPressed: onDelete,
+                    icon: Icon(Icons.delete_outline, color: Colors.red),
+                  ),
+                ],
               ],
             ),
           ),

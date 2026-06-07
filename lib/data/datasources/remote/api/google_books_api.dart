@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 class GoogleBooksApi {
   final ApiClient _apiClient;
+  static const String _googleBooksApiKey = Env.googleBooksApiKey;
 
   GoogleBooksApi(this._apiClient);
 

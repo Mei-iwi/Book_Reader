@@ -415,5 +415,20 @@ class _Myprofile extends State<Myprofile> {
         ),
       ),
     );
+
+    if (!mounted) return;
+    await _loadData();
+  }
+
+  int _readInt(Object? value, {required int fallback}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  double _readDouble(Object? value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 }

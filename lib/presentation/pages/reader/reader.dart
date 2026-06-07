@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:book_reader/config/routes.dart';
@@ -452,14 +453,14 @@ class _Reader extends State<Reader> {
 
   void _previousPage() {
     setState(() {
-      newvalue - 1 <= 0 ? newvalue = widget.total : newvalue -= 1;
+      newvalue = newvalue <= 1 ? _safeTotalPage : newvalue - 1;
     });
     _saveProgress();
   }
 
   void _nextPage() {
     setState(() {
-      newvalue + 1 > widget.total ? newvalue = 1 : newvalue += 1;
+      newvalue = newvalue >= _safeTotalPage ? 1 : newvalue + 1;
     });
     _saveProgress();
   }
@@ -484,7 +485,7 @@ class _Reader extends State<Reader> {
 
   @override
   Widget build(BuildContext context) {
-    final totalPage = widget.total <= 0 ? 1 : widget.total;
+    final totalPage = _safeTotalPage;
 
     return Scaffold(
       appBar: AppBar(
@@ -733,6 +734,16 @@ class _Reader extends State<Reader> {
       children: [
         if (_webProgress < 100)
           LinearProgressIndicator(value: _webProgress / 100),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          color: Colors.blue.withValues(alpha: 0.08),
+          child: const Text(
+            'Bookmark online được lưu theo sách đang đọc.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+          ),
+        ),
         Expanded(child: WebViewWidget(controller: controller)),
       ],
     );

@@ -230,12 +230,18 @@ Widget _buiderBookSection({
                     : "Unknow",
                 isFree: book.isFree,
                 func: () {
+                  if (openContinueReader) {
+                    _openContinueReader(context, provider, book);
+                    return;
+                  }
+
                   Navigator.pushNamed(
                     context,
                     '/book-detail',
                     arguments: book.id,
                   );
                 },
+                openDirectly: openContinueReader,
                 onDownload: () async {
                   debugPrint('===== BẤM DOWNLOAD =====');
                   debugPrint('Book title: ${book.title}');
@@ -268,6 +274,39 @@ Widget _buiderBookSection({
         ),
     ],
   );
+}
+
+void _openContinueReader(
+  BuildContext context,
+  HomeBookProvider provider,
+  Book book,
+) {
+  final progress = provider.getProgressForBook(book.id);
+  final currentPage = _readInt(progress?['current_page'], fallback: 1);
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => Reader(
+        value: currentPage > 0 ? currentPage : 1,
+        total: book.pageCount > 0 ? book.pageCount : 1,
+        title: book.title,
+        bookId: book.id,
+        userId: context.read<AuthProvider>().currentUser?.userId,
+        localFilePath: book.localFilePath,
+        webReaderLink: book.webReaderLink,
+        previewLink: book.previewLink,
+        pdfDownloadLink: book.pdfDownloadLink,
+        epubDownloadLink: book.epubDownloadLink,
+      ),
+    ),
+  );
+}
+
+int _readInt(Object? value, {required int fallback}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
 }
 
 TextStyle style() {

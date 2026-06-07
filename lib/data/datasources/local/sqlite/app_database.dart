@@ -18,12 +18,21 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     final path = join(databasePath, 'book_reader.db');
 
-    return openDatabase(path, version: 1, onCreate: _onCreate);
+    return openDatabase(
+      path,
+      version: 1,
+      onCreate: _onCreate,
+      onOpen: _ensureSchema,
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    await _ensureSchema(db);
+  }
+
+  Future<void> _ensureSchema(Database db) async {
     await db.execute('''
-  CREATE TABLE offline_books (
+  CREATE TABLE IF NOT EXISTS offline_books (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     authors TEXT,
@@ -47,7 +56,7 @@ class AppDatabase {
 ''');
 
     await db.execute('''
-    CREATE TABLE reading_progress (
+    CREATE TABLE IF NOT EXISTS reading_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id TEXT NOT NULL,
       current_page INTEGER DEFAULT 0,
@@ -58,7 +67,7 @@ class AppDatabase {
   ''');
 
     await db.execute('''
-    CREATE TABLE bookmarks (
+    CREATE TABLE IF NOT EXISTS bookmarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id TEXT NOT NULL,
       page INTEGER NOT NULL,
