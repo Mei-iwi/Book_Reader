@@ -23,6 +23,5 @@ class Env {
   // flutter run --dart-define=GOOGLE_BOOKS_API_KEY=your_key
   static const String googleBooksApiKey = String.fromEnvironment(
     'GOOGLE_BOOKS_API_KEY',
-    defaultValue: 'GOOGLE_BOOKS_API_KEY',
   );
 }
