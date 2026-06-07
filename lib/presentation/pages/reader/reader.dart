@@ -66,7 +66,8 @@ class Reader extends StatefulWidget {
 
 class _Reader extends State<Reader> {
   late int newvalue = widget.value;
-  late Future<String> _contentFuture;
+  late int _textPageCount = widget.total <= 0 ? 1 : widget.total;
+  late Future<List<String>> _pagesFuture;
   late final ReadingProgressDao _readingProgressDao;
   late final BookmarkDao _bookmarkDao;
   late final ReadingProgressApi _readingProgressApi;
@@ -96,6 +97,27 @@ class _Reader extends State<Reader> {
   bool get _hasRemotePdf => _remotePdfLink.isNotEmpty;
   bool get _hasRemoteEpub => _remoteEpubLink.isNotEmpty;
 
+  int get _currentTotalPage {
+    if (_shouldUseWebView || _hasExternalLocalFile || _hasRemoteEpub) {
+      return widget.total <= 0 ? 1 : widget.total;
+    }
+
+    return _textPageCount <= 0 ? 1 : _textPageCount;
+  }
+
+  String get _webViewUrl {
+    if (_hasOnlineLink) {
+      return _onlineLink.replaceFirst('http://', 'https://');
+    }
+
+    if (_hasRemotePdf) {
+      final pdfUrl = _remotePdfLink.replaceFirst('http://', 'https://');
+      return 'https://docs.google.com/gview?embedded=1&url=${Uri.encodeComponent(pdfUrl)}';
+    }
+
+    return '';
+  }
+
   bool get _hasLocalTextFile {
     final localPath = widget.localFilePath?.trim() ?? '';
     return localPath.toLowerCase().endsWith('.txt');
@@ -110,10 +132,10 @@ class _Reader extends State<Reader> {
     final localPath = widget.localFilePath?.trim() ?? '';
 
     if (_hasLocalTextFile) return false;
-    if (_hasRemotePdf || _hasRemoteEpub) return false;
 
-    // Nếu chưa có file local đọc được, ưu tiên hiển thị Google Books trong app.
+    // Uu tien doc online/PDF remote ngay trong app neu co link.
     if (_hasOnlineLink) return true;
+    if (_hasRemotePdf) return true;
 
     // Nếu là PDF/EPUB local thì Reader này chưa render trực tiếp.
     // Có thể mở bằng màn PDF/EPUB riêng sau.
@@ -127,37 +149,36 @@ class _Reader extends State<Reader> {
   void initState() {
     super.initState();
 
-    _contentFuture = _loadContent();
     final appDatabase = AppDatabase.instance;
     final apiClient = ApiClient();
     _readingProgressDao = ReadingProgressDao(appDatabase);
     _bookmarkDao = BookmarkDao(appDatabase);
     _readingProgressApi = ReadingProgressApi(apiClient);
     _bookmarkApi = BookmarkApi(apiClient);
+    _pagesFuture = _loadPages();
 
     if (_shouldUseWebView) {
       _initWebView();
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSavedProgress();
-      _saveProgress();
+      if (_shouldUseWebView || _hasExternalLocalFile || _hasRemoteEpub) {
+        _loadSavedProgress();
+        _saveProgress();
+      }
       _autoOpenRemoteFileIfNeeded();
     });
   }
 
   void _autoOpenRemoteFileIfNeeded() {
-    if (_autoOpenedRemoteFile || (!_hasRemotePdf && !_hasRemoteEpub)) return;
+    if (_autoOpenedRemoteFile || _shouldUseWebView || !_hasRemoteEpub) return;
     _autoOpenedRemoteFile = true;
-    final isPdf = _hasRemotePdf;
-    _openRemoteFileExternal(
-      url: isPdf ? _remotePdfLink : _remoteEpubLink,
-      extension: isPdf ? 'pdf' : 'epub',
-    );
+    _openRemoteFileExternal(url: _remoteEpubLink, extension: 'epub');
   }
 
   void _initWebView() {
-    final fixedUrl = _onlineLink.replaceFirst('http://', 'https://');
+    final fixedUrl = _webViewUrl;
+    if (fixedUrl.isEmpty) return;
 
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -241,7 +262,86 @@ class _Reader extends State<Reader> {
     return 'Sách này chưa có nội dung để đọc.';
   }
 
-  Future<void> _loadSavedProgress() async {
+  Future<List<String>> _loadPages() async {
+    final content = await _loadContent();
+    final pages = _paginateContent(content);
+
+    if (mounted && !_hasExternalLocalFile && !_shouldUseWebView) {
+      setState(() {
+        _textPageCount = pages.length;
+      });
+      await _loadSavedProgress(totalPageOverride: pages.length);
+      await _saveProgress();
+    }
+
+    return pages;
+  }
+
+  List<String> _paginateContent(String content) {
+    final normalized = _cleanBookText(content);
+    if (normalized.trim().isEmpty || _hasExternalLocalFile) {
+      return [normalized];
+    }
+
+    const maxChars = 1700;
+    final paragraphs = normalized
+        .split(RegExp(r'\n\s*\n'))
+        .map((paragraph) => paragraph.trim())
+        .where((paragraph) => paragraph.isNotEmpty);
+
+    final pages = <String>[];
+    final buffer = StringBuffer();
+
+    void flushPage() {
+      final page = buffer.toString().trim();
+      if (page.isNotEmpty) pages.add(page);
+      buffer.clear();
+    }
+
+    for (final paragraph in paragraphs) {
+      if (paragraph.length > maxChars) {
+        if (buffer.isNotEmpty) flushPage();
+        for (var start = 0; start < paragraph.length; start += maxChars) {
+          final end = (start + maxChars).clamp(0, paragraph.length).toInt();
+          pages.add(paragraph.substring(start, end).trim());
+        }
+        continue;
+      }
+
+      final nextLength = buffer.length + paragraph.length + 2;
+      if (nextLength > maxChars && buffer.isNotEmpty) {
+        flushPage();
+      }
+      buffer.writeln(paragraph);
+      buffer.writeln();
+    }
+
+    if (buffer.isNotEmpty) flushPage();
+    return pages.isEmpty ? [normalized] : pages;
+  }
+
+  String _cleanBookText(String content) {
+    var text = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    text = text.replaceFirst('\uFEFF', '');
+
+    final startMarker = RegExp(
+      r'\*\*\*\s*START OF (THE|THIS) PROJECT GUTENBERG EBOOK.*?\*\*\*',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    final endMarker = RegExp(
+      r'\*\*\*\s*END OF (THE|THIS) PROJECT GUTENBERG EBOOK.*',
+      caseSensitive: false,
+      dotAll: true,
+    );
+
+    text = text.replaceFirst(startMarker, '').replaceFirst(endMarker, '');
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
+    return text.trim();
+  }
+
+  Future<void> _loadSavedProgress({int? totalPageOverride}) async {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
 
@@ -249,9 +349,9 @@ class _Reader extends State<Reader> {
     if (!mounted || progress == null) return;
 
     final savedPage = progress['current_page'] as int? ?? widget.value;
-    final totalPage = widget.total <= 0 ? 1 : widget.total;
+    final totalPage = totalPageOverride ?? _currentTotalPage;
     setState(() {
-      newvalue = savedPage.clamp(1, totalPage);
+      newvalue = savedPage.clamp(1, totalPage).toInt();
     });
   }
 
@@ -259,7 +359,7 @@ class _Reader extends State<Reader> {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
 
-    final totalPage = widget.total <= 0 ? 1 : widget.total;
+    final totalPage = _currentTotalPage;
     final progressPercent = (newvalue / totalPage) * 100;
 
     await _readingProgressDao.saveProgress(
@@ -303,6 +403,24 @@ class _Reader extends State<Reader> {
     } catch (e) {
       debugPrint('SYNC BOOKMARK ERROR: $e');
     }
+  }
+
+  Future<void> _saveBookmarkFromToolbar() async {
+    final bookId = widget.bookId;
+    if (bookId == null || bookId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sach nay chua co ma sach de bookmark.')),
+      );
+      return;
+    }
+
+    await _saveBookmark();
+    await _saveProgress();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Da luu bookmark trang $newvalue')));
   }
 
   Future<void> _showBookmarksDialog() async {
@@ -363,11 +481,11 @@ class _Reader extends State<Reader> {
                   ),
                   onTap: () {
                     Navigator.pop(dialogContext);
-                    if (!_shouldUseWebView) {
-                      setState(() {
-                        newvalue = page;
-                      });
-                    }
+                    final totalPage = widget.total <= 0 ? 1 : widget.total;
+                    setState(() {
+                      newvalue = page.clamp(1, totalPage).toInt();
+                    });
+                    _saveProgress();
                   },
                 );
               },
@@ -451,15 +569,17 @@ class _Reader extends State<Reader> {
   }
 
   void _previousPage() {
+    final totalPage = _currentTotalPage;
     setState(() {
-      newvalue - 1 <= 0 ? newvalue = widget.total : newvalue -= 1;
+      newvalue - 1 <= 0 ? newvalue = totalPage : newvalue -= 1;
     });
     _saveProgress();
   }
 
   void _nextPage() {
+    final totalPage = _currentTotalPage;
     setState(() {
-      newvalue + 1 > widget.total ? newvalue = 1 : newvalue += 1;
+      newvalue + 1 > totalPage ? newvalue = 1 : newvalue += 1;
     });
     _saveProgress();
   }
@@ -484,7 +604,7 @@ class _Reader extends State<Reader> {
 
   @override
   Widget build(BuildContext context) {
-    final totalPage = widget.total <= 0 ? 1 : widget.total;
+    final totalPage = _currentTotalPage;
 
     return Scaffold(
       appBar: AppBar(
@@ -526,9 +646,14 @@ class _Reader extends State<Reader> {
             icon: const Icon(Icons.comment, color: Colors.blue),
           ),
           IconButton(
-            tooltip: 'Bookmark',
+            tooltip: 'Luu bookmark',
+            onPressed: _saveBookmarkFromToolbar,
+            icon: const Icon(Icons.bookmark_add_outlined, color: Colors.blue),
+          ),
+          IconButton(
+            tooltip: 'Danh sach bookmark',
             onPressed: _showBookmarksDialog,
-            icon: const Icon(Icons.more_vert, color: Colors.blue),
+            icon: const Icon(Icons.bookmarks_outlined, color: Colors.blue),
           ),
           const SizedBox(width: 10),
         ],
@@ -538,9 +663,7 @@ class _Reader extends State<Reader> {
           : (_hasRemotePdf || _hasRemoteEpub)
           ? _buildRemoteFileReader()
           : _buildTextReader(),
-      bottomNavigationBar: _shouldUseWebView
-          ? null
-          : _buildBottomPageNavigation(totalPage),
+      bottomNavigationBar: _buildBottomPageNavigation(totalPage),
     );
   }
 
@@ -574,7 +697,11 @@ class _Reader extends State<Reader> {
         RegExp(r'[^a-zA-Z0-9_-]'),
         '_',
       );
-      final filePath = p.join(directory.path, 'books', '$safeBookId.$extension');
+      final filePath = p.join(
+        directory.path,
+        'books',
+        '$safeBookId.$extension',
+      );
       final file = File(filePath);
       await file.parent.create(recursive: true);
 
@@ -598,9 +725,9 @@ class _Reader extends State<Reader> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Khong the tai/mo file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Khong the tai/mo file: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -647,9 +774,9 @@ class _Reader extends State<Reader> {
               onPressed: _isOpeningRemoteFile
                   ? null
                   : () => _openRemoteFileExternal(
-                        url: link,
-                        extension: extension,
-                      ),
+                      url: link,
+                      extension: extension,
+                    ),
               icon: _isOpeningRemoteFile
                   ? const SizedBox(
                       width: 16,
@@ -657,7 +784,9 @@ class _Reader extends State<Reader> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.open_in_new),
-              label: Text(_isOpeningRemoteFile ? 'Dang mo...' : 'Mo $extension'),
+              label: Text(
+                _isOpeningRemoteFile ? 'Dang mo...' : 'Mo $extension',
+              ),
             ),
             if (_hasOnlineLink) ...[
               const SizedBox(height: 12),
@@ -698,9 +827,9 @@ class _Reader extends State<Reader> {
                   onPressed: _isOpeningRemoteFile
                       ? null
                       : () => _openRemoteFileExternal(
-                            url: _remotePdfLink,
-                            extension: 'pdf',
-                          ),
+                          url: _remotePdfLink,
+                          extension: 'pdf',
+                        ),
                   icon: const Icon(Icons.picture_as_pdf),
                   label: const Text('Mo PDF'),
                 ),
@@ -709,9 +838,9 @@ class _Reader extends State<Reader> {
                   onPressed: _isOpeningRemoteFile
                       ? null
                       : () => _openRemoteFileExternal(
-                            url: _remoteEpubLink,
-                            extension: 'epub',
-                          ),
+                          url: _remoteEpubLink,
+                          extension: 'epub',
+                        ),
                   icon: const Icon(Icons.menu_book),
                   label: const Text('Mo EPUB'),
                 ),
@@ -740,10 +869,10 @@ class _Reader extends State<Reader> {
 
   Widget _buildTextReader() {
     if (_hasExternalLocalFile) {
-      return FutureBuilder<String>(
-        future: _contentFuture,
+      return FutureBuilder<List<String>>(
+        future: _pagesFuture,
         builder: (context, snapshot) {
-          final message = snapshot.data ?? 'File chua san sang de mo.';
+          final message = snapshot.data?.first ?? 'File chua san sang de mo.';
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -771,8 +900,8 @@ class _Reader extends State<Reader> {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 50),
-          child: FutureBuilder<String>(
-            future: _contentFuture,
+          child: FutureBuilder<List<String>>(
+            future: _pagesFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -790,7 +919,10 @@ class _Reader extends State<Reader> {
                 );
               }
 
-              final content = snapshot.data ?? '';
+              final pages = snapshot.data ?? const <String>[''];
+              final totalPages = pages.isEmpty ? 1 : pages.length;
+              final pageIndex = (newvalue - 1).clamp(0, totalPages - 1).toInt();
+              final content = pages.isEmpty ? '' : pages[pageIndex];
 
               return SingleChildScrollView(
                 child: Center(

@@ -43,7 +43,12 @@ Widget wbook({
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child: checkSourceImage(urlImage: url)
+                child: _isBrokenDemoUrl(url)
+                    ? Image.asset(
+                        'assets/sample_data/templateImages/chuatenhan.jpg',
+                        fit: BoxFit.cover,
+                      )
+                    : checkSourceImage(urlImage: url)
                     ? Image.asset(url, fit: BoxFit.cover)
                     : Image.network(
                         url.replaceFirst('http://', 'https://'),
@@ -116,9 +121,7 @@ void showBookSnackBar(
                   borderRadius: BorderRadius.circular(15),
                   image: DecorationImage(
                     fit: BoxFit.cover,
-                    image: (checkSourceImage(urlImage: url)
-                        ? AssetImage(url)
-                        : NetworkImage(url)),
+                    image: _coverImageProvider(url),
                   ),
                 ),
               ),
@@ -196,4 +199,19 @@ void showBookSnackBar(
         ),
       ),
     );
+}
+
+ImageProvider _coverImageProvider(String url) {
+  final value = url.trim();
+  if (value.isEmpty || _isBrokenDemoUrl(value)) {
+    return const AssetImage('assets/sample_data/templateImages/chuatenhan.jpg');
+  }
+  return checkSourceImage(urlImage: value)
+      ? AssetImage(value)
+      : NetworkImage(value.replaceFirst('http://', 'https://'));
+}
+
+bool _isBrokenDemoUrl(String url) {
+  final uri = Uri.tryParse(url);
+  return uri?.host == 'example.com';
 }

@@ -6,6 +6,7 @@ import 'package:book_reader/data/datasources/local/file_cache/book_file_download
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/datasources/remote/api/auth_api.dart';
 import 'package:book_reader/data/datasources/remote/api/google_books_api.dart';
+import 'package:book_reader/data/datasources/remote/api/gutendex_api.dart';
 import 'package:book_reader/data/datasources/remote/api/library_api.dart';
 import 'package:book_reader/data/datasources/remote/api/membership_api.dart';
 import 'package:book_reader/domain/repositories/auth_repository_impl.dart';
@@ -25,6 +26,7 @@ void main() {
   final apiClient = ApiClient();
   final authApi = AuthApi(apiClient);
   final googleBooksApi = GoogleBooksApi(apiClient);
+  final gutendexApi = GutendexApi();
   final libraryApi = LibraryApi(apiClient);
   final membershipApi = MembershipApi(apiClient);
   final sessionStorage = SessionStorage();
@@ -35,6 +37,7 @@ void main() {
 
   final bookRepository = BookRepositoryImpl(
     googleBooksApi,
+    gutendexApi,
     offlineBookDao,
     bookFileDownloader,
   );

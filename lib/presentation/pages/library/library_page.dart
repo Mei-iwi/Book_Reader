@@ -77,7 +77,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
     final userId = context.read<AuthProvider>().currentUser?.userId;
     final categories = _categories(provider.offlineBooks);
-    final books = _filteredBooks(provider.offlineBooks);
+    final books = _filteredBooks(provider);
 
     return RefreshIndicator(
       onRefresh: () => provider.loadOfflineBooks(userId: userId),
@@ -132,9 +132,10 @@ class _LibraryPageState extends State<LibraryPage> {
     return values.toList()..sort();
   }
 
-  List<Book> _filteredBooks(List<Book> books) {
+  List<Book> _filteredBooks(LibraryProvider provider) {
+    final books = provider.offlineBooks;
     if (_selectedCategory == 'downloaded') {
-      return books.where((book) => book.isDownloaded).toList();
+      return provider.downloadedBooks;
     }
     if (_selectedCategory == 'all') return books;
     return books

@@ -13,6 +13,7 @@ class LibraryProvider extends ChangeNotifier {
   String? errMessage;
   List<Book> offlineBooks = [];
   List<Book> remoteBooks = [];
+  List<Book> downloadedBooks = [];
 
   Future<void> loadOfflineBooks({int? userId}) async {
     try {
@@ -32,6 +33,11 @@ class LibraryProvider extends ChangeNotifier {
       }
 
       final localBooks = await _bookRepository.getOfflineBooks();
+      downloadedBooks = localBooks
+          .where(
+            (book) => book.isDownloaded || book.localFilePath.trim().isNotEmpty,
+          )
+          .toList();
       final merged = <String, Book>{};
       for (final book in remoteBooks) {
         merged[book.id] = book;
@@ -72,6 +78,7 @@ class LibraryProvider extends ChangeNotifier {
 
       offlineBooks.removeWhere((item) => item.id == book.id);
       remoteBooks.removeWhere((item) => item.id == book.id);
+      downloadedBooks.removeWhere((item) => item.id == book.id);
 
       notifyListeners();
 

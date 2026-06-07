@@ -1,3 +1,5 @@
+import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:flutter/foundation.dart';
@@ -18,8 +20,8 @@ class HomeBookProvider extends ChangeNotifier {
   List<Book> searchResults = [];
   String activeSearchKeyword = '';
 
-  Future<void> loadHomeData() async {
-    if (_homeLoaded) {
+  Future<void> loadHomeData({bool forceRefresh = false}) async {
+    if (_homeLoaded && !forceRefresh) {
       debugPrint('Home data already loaded. Skip API call.');
       return;
     }
@@ -30,6 +32,7 @@ class HomeBookProvider extends ChangeNotifier {
       notifyListeners();
 
       final savedBooks = await _bookRepository.getOfflineBooks();
+      final continueReadingBooks = await _loadContinueBooks(savedBooks);
       final freeFiction = await _loadRecommendationSection(
         freeQuery: 'public domain fiction',
         paidQuery: 'fiction bestseller',
@@ -43,7 +46,7 @@ class HomeBookProvider extends ChangeNotifier {
         paidQuery: 'science books',
       );
 
-      continueBooks = [];
+      continueBooks = continueReadingBooks;
       libraryBooks = savedBooks.take(6).toList();
       recommendationSections = {
         'Free Fiction': freeFiction.take(5).toList(),
@@ -150,19 +153,57 @@ class HomeBookProvider extends ChangeNotifier {
     required String freeQuery,
     required String paidQuery,
   }) async {
-    final freeBooks = await _bookRepository.searchBooks(
-      freeQuery,
-      onlyFreeEbooks: true,
-      maxResults: 5,
-    );
-    if (freeBooks.isNotEmpty) return freeBooks.take(5).toList();
+    try {
+      final freeBooks = await _bookRepository.searchBooks(
+        freeQuery,
+        onlyFreeEbooks: true,
+        maxResults: 5,
+      );
+      if (freeBooks.isNotEmpty) return freeBooks.take(5).toList();
 
-    final paidBooks = await _bookRepository.searchBooks(
-      paidQuery,
-      onlyFreeEbooks: false,
-      maxResults: 5,
-    );
-    return paidBooks.take(5).toList();
+      final paidBooks = await _bookRepository.searchBooks(
+        paidQuery,
+        onlyFreeEbooks: false,
+        maxResults: 5,
+      );
+      return paidBooks.take(5).toList();
+    } catch (e) {
+      debugPrint('LOAD RECOMMENDATION SECTION ERROR: $e');
+      return [];
+    }
+  }
+
+  Future<List<Book>> _loadContinueBooks(List<Book> savedBooks) async {
+    final progressRows = await ReadingProgressDao(
+      AppDatabase.instance,
+    ).getContinueProgress(limit: 5);
+    if (progressRows.isEmpty) return [];
+
+    final savedById = {for (final book in savedBooks) book.id: book};
+    final books = <Book>[];
+    final addedIds = <String>{};
+
+    for (final row in progressRows) {
+      final bookId = row['book_id']?.toString() ?? '';
+      if (bookId.isEmpty || addedIds.contains(bookId)) continue;
+
+      final cachedBook = savedById[bookId];
+      if (cachedBook != null) {
+        books.add(cachedBook);
+        addedIds.add(bookId);
+        continue;
+      }
+
+      try {
+        final book = await _bookRepository.getBookDetail(bookId);
+        books.add(book);
+        addedIds.add(bookId);
+      } catch (e) {
+        debugPrint('LOAD CONTINUE BOOK DETAIL ERROR: $e');
+      }
+    }
+
+    return books.take(5).toList();
   }
 
   void clearSearch() {

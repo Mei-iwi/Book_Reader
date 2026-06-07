@@ -24,7 +24,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final routeBookId = ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
+    final routeBookId =
+        ModalRoute.of(context)?.settings.arguments?.toString() ?? '';
     if (routeBookId == _bookId && _bookFuture != null) return;
 
     _bookId = routeBookId;
@@ -94,7 +95,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
         final book = snapshot.data;
         if (book == null) {
-          return const Scaffold(body: Center(child: Text('Khong tim thay sach.')));
+          return const Scaffold(
+            body: Center(child: Text('Khong tim thay sach.')),
+          );
         }
 
         return _BookDetailContent(
@@ -167,7 +170,9 @@ class _BookDetailContent extends StatelessWidget {
                   style: const TextStyle(color: Colors.black87, fontSize: 14),
                   children: [
                     TextSpan(
-                      text: book.authors.isEmpty ? 'Unknown' : book.authors.first,
+                      text: book.authors.isEmpty
+                          ? 'Unknown'
+                          : book.authors.first,
                       style: const TextStyle(color: Color(0xFF4B5563)),
                     ),
                   ],
@@ -259,19 +264,21 @@ class _BookDetailContent extends StatelessWidget {
       }
       await libraryProvider.loadOfflineBooks(userId: userId);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Da luu sach vao thu vien')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Da luu sach vao thu vien')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Khong the tai sach: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Khong the tai sach: $e')));
     }
   }
 
-  void _readBook(BuildContext context) {
+  Future<void> _readBook(BuildContext context) async {
+    final isFullTextApiBook = _isFullTextApiBook;
     final canReadOnline =
+        isFullTextApiBook ||
         book.webReaderLink.trim().isNotEmpty ||
         book.previewLink.trim().isNotEmpty ||
         book.localFilePath.trim().isNotEmpty ||
@@ -287,23 +294,57 @@ class _BookDetailContent extends StatelessWidget {
       return;
     }
 
+    var localFilePath = book.localFilePath;
+
+    if (isFullTextApiBook) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      try {
+        localFilePath = await context.read<BookRepository>().cacheReadableText(
+          book,
+        );
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Khong the tai noi dung sach: $e')),
+          );
+        }
+        return;
+      }
+
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!context.mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Reader(
           value: 1,
-          total: book.pageCount > 0 ? book.pageCount : 1,
+          total: isFullTextApiBook
+              ? 1
+              : (book.pageCount > 0 ? book.pageCount : 1),
           title: book.title,
           bookId: book.id,
           userId: context.read<AuthProvider>().currentUser?.userId,
-          webReaderLink: book.webReaderLink,
-          previewLink: book.previewLink,
+          webReaderLink: isFullTextApiBook ? null : book.webReaderLink,
+          previewLink: isFullTextApiBook ? null : book.previewLink,
           pdfDownloadLink: book.pdfDownloadLink,
           epubDownloadLink: book.epubDownloadLink,
-          localFilePath: book.localFilePath,
+          localFilePath: localFilePath,
         ),
       ),
     );
+  }
+
+  bool get _isFullTextApiBook {
+    return book.source == 'gutendex' || book.id.startsWith('gutendex_');
   }
 
   Widget _buildCover() {

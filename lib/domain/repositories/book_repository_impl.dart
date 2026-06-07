@@ -1,23 +1,34 @@
+import 'dart:io';
+
 import 'package:book_reader/data/datasources/local/dao/offline_book_dao.dart';
 import 'package:book_reader/data/datasources/local/file_cache/book_file_downloader.dart';
 import 'package:book_reader/data/datasources/remote/api/google_books_api.dart';
+import 'package:book_reader/data/datasources/remote/api/gutendex_api.dart';
 import 'package:book_reader/data/models/book_model.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class BookRepositoryImpl implements BookRepository {
   final GoogleBooksApi _googleBooksApi;
+  final GutendexApi _gutendexApi;
   final OfflineBookDao _offlineBookDao;
   final BookFileDownloader _bookFileDownloader;
 
   BookRepositoryImpl(
     this._googleBooksApi,
+    this._gutendexApi,
     this._offlineBookDao,
     this._bookFileDownloader,
   );
 
   @override
   Future<Book> getBookDetail(String bookId) {
+    if (_gutendexApi.isGutendexId(bookId)) {
+      return _gutendexApi.getBookDetail(bookId);
+    }
+
     return _googleBooksApi.getBookDetail(bookId);
   }
 
@@ -26,12 +37,29 @@ class BookRepositoryImpl implements BookRepository {
     String keyword, {
     bool onlyFreeEbooks = false,
     int maxResults = 10,
-  }) {
-    return _googleBooksApi.searchBooks(
+  }) async {
+    final googleBooks = await _googleBooksApi.searchBooks(
       keyword: keyword,
       maxResult: maxResults,
       onlyFreeEbooks: onlyFreeEbooks,
     );
+
+    final gutendexBooks = await _gutendexApi.searchBooks(
+      keyword: keyword,
+      maxResult: maxResults,
+    );
+
+    final merged = <String, Book>{};
+    final orderedBooks = onlyFreeEbooks
+        ? [...gutendexBooks, ...googleBooks]
+        : [...googleBooks, ...gutendexBooks];
+
+    for (final book in orderedBooks) {
+      merged.putIfAbsent(book.id, () => book);
+      if (merged.length >= maxResults) break;
+    }
+
+    return merged.values.toList();
   }
 
   @override
@@ -47,6 +75,10 @@ class BookRepositoryImpl implements BookRepository {
   @override
   Future<void> saveBookOffline(Book book) async {
     String localFilePath = book.localFilePath;
+
+    if (_isGutendexBook(book)) {
+      localFilePath = await cacheReadableText(book);
+    }
 
     final hasEpub = book.epubDownloadLink.trim().isNotEmpty;
     final hasPdf = book.pdfDownloadLink.trim().isNotEmpty;
@@ -86,6 +118,17 @@ class BookRepositoryImpl implements BookRepository {
 
   @override
   Future<void> downloadBook(Book book) async {
+    if (_isGutendexBook(book)) {
+      final localPath = await cacheReadableText(book);
+      final downloadedBook = BookModel.fromEntity(
+        book,
+        isDownloaded: localPath.isNotEmpty,
+        localFilePath: localPath,
+      );
+      await _offlineBookDao.insertOrUpdateBook(downloadedBook);
+      return;
+    }
+
     final hasEpub = book.epubDownloadLink.isNotEmpty;
     final hasPdf = book.pdfDownloadLink.isNotEmpty;
 
@@ -118,5 +161,42 @@ class BookRepositoryImpl implements BookRepository {
       localFilePath: '',
     );
     await _offlineBookDao.insertOrUpdateBook(bookModel);
+  }
+
+  @override
+  Future<String> cacheReadableText(Book book) async {
+    if (book.localFilePath.trim().isNotEmpty) {
+      final file = File(book.localFilePath);
+      if (await file.exists() && await file.length() > 0) {
+        return book.localFilePath;
+      }
+    }
+
+    if (!_isGutendexBook(book)) {
+      throw Exception('Sach nay khong co API full text de tai ve.');
+    }
+
+    final content = await _gutendexApi.fetchPlainText(book);
+    final directory = await getApplicationDocumentsDirectory();
+    final safeBookId = book.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final filePath = p.join(directory.path, 'books', '$safeBookId.txt');
+    final file = File(filePath);
+
+    await file.parent.create(recursive: true);
+    await file.writeAsString(content);
+
+    final cachedBook = BookModel.fromEntity(
+      book,
+      localFilePath: filePath,
+      isDownloaded: true,
+    );
+    await _offlineBookDao.insertOrUpdateBook(cachedBook);
+
+    return filePath;
+  }
+
+  bool _isGutendexBook(Book book) {
+    return book.source == GutendexApi.source ||
+        _gutendexApi.isGutendexId(book.id);
   }
 }
