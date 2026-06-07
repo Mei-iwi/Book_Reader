@@ -29,10 +29,6 @@ class _Myprofile extends State<Myprofile> {
   List<Map<String, dynamic>> _history = [];
   Map<String, dynamic>? _localProfile;
   bool _isLoading = true;
-  String? _loadError;
-  final ReadingProgressDao _readingProgressDao = ReadingProgressDao(
-    AppDatabase.instance,
-  );
 
   @override
   void initState() {
@@ -41,49 +37,27 @@ class _Myprofile extends State<Myprofile> {
   }
 
   Future<void> _loadData() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _loadError = null;
-      });
+    final user = context.read<AuthProvider>().currentUser;
+    final db = AppDatabase.instance;
+    final favDao = FavoriteDao(db);
+    final progDao = ReadingProgressDao(db);
+    final profDao = ProfileDao(db);
+
+    final favs = await favDao.getAllFavorites();
+    final hist = await progDao.getAllProgress();
+
+    Map<String, dynamic>? prof;
+    if (user != null) {
+      prof = await profDao.getProfile(user.userId.toString());
     }
 
-    try {
-      final user = context.read<AuthProvider>().currentUser;
-      final db = AppDatabase.instance;
-      final favDao = FavoriteDao(db);
-      final profDao = ProfileDao(db);
-
-      final favs = await favDao.getAllFavorites();
-      await _readingProgressDao.trimProgressHistory(maxItems: 10);
-      final hist = await _readingProgressDao.getRecentProgress(limit: 10);
-
-      Map<String, dynamic>? prof;
-      if (user != null) {
-        prof = await profDao.getProfile(user.userId.toString());
-      }
-
-      if (mounted) {
-        setState(() {
-          _favorites = favs;
-          _history = hist;
-          _localProfile = prof;
-        });
-      }
-    } catch (e, stackTrace) {
-      debugPrint('PROFILE LOAD ERROR: $e');
-      debugPrintStack(stackTrace: stackTrace);
-      if (mounted) {
-        setState(() {
-          _loadError = 'Không thể tải dữ liệu hồ sơ. Bấm thử lại.';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    if (mounted) {
+      setState(() {
+        _favorites = favs;
+        _history = hist;
+        _localProfile = prof;
+        _isLoading = false;
+      });
     }
   }
 
@@ -183,32 +157,6 @@ class _Myprofile extends State<Myprofile> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_loadError != null) ...[
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.red.shade100),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                color: Colors.red,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(_loadError!)),
-                              TextButton(
-                                onPressed: _loadData,
-                                child: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -347,8 +295,7 @@ class _Myprofile extends State<Myprofile> {
                                       );
                                       _loadData();
                                     },
-                                    rateFavourite: 1,
-                                    showFavoriteCount: false,
+                                    rateFavourite: 0,
                                   );
                                 }).toList(),
                               ),
@@ -391,17 +338,14 @@ class _Myprofile extends State<Myprofile> {
                                         ? book!.thumbnailUrl
                                         : Templateimage.book1,
                                     name:
-                                        book?.title ?? 'Đang đọc (ID: $bookId)',
-                                    percent: _readDouble(
-                                      hist['progress_percent'],
-                                    ),
+                                        book?.title ?? 'Dang doc (ID: $bookId)',
+                                    percent: (hist['progress_percent'] ?? 0)
+                                        .toDouble(),
                                     onTap: () => _openReaderFromHistory(
                                       context,
                                       hist,
                                       book,
                                     ),
-                                    onDelete: () =>
-                                        _confirmDeleteProgress(bookId),
                                   );
                                 }).toList(),
                               ),
@@ -412,42 +356,6 @@ class _Myprofile extends State<Myprofile> {
               ),
             ),
     );
-  }
-
-  Future<void> _confirmDeleteProgress(String bookId) async {
-    if (bookId.trim().isEmpty) return;
-
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Xóa tiến độ đọc'),
-          content: const Text(
-            'Bạn có muốn xóa tiến độ đọc của sách này không?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Xóa', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDelete != true) return;
-
-    await _readingProgressDao.deleteProgress(bookId);
-    await _loadData();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Đã xóa tiến độ đọc')));
   }
 
   ImageProvider _avatarImage(String avatarPath) {
@@ -487,8 +395,10 @@ class _Myprofile extends State<Myprofile> {
 
     if (!context.mounted) return;
 
-    final currentPage = _readInt(history['current_page'], fallback: 1);
-    await Navigator.push(
+    final currentPage = history['current_page'] is int
+        ? history['current_page'] as int
+        : 1;
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Reader(

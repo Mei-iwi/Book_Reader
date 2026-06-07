@@ -4,7 +4,6 @@ import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/pages/profile/myprofile.dart';
-import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:flutter/material.dart';
@@ -68,64 +67,10 @@ class _Home extends State<Home> {
       drawer: Drawer(
         child: ListView(
           children: [
-            DrawerHeader(
-              margin: EdgeInsets.zero,
-              padding: EdgeInsets.zero,
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1976D2), Color(0xFF26C6DA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.menu_book_rounded,
-                        color: Colors.white,
-                        size: 34,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Book Reader',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Read, save and continue your books',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            const DrawerHeader(
+              child: Text(
+                'Book Reader',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
             ListTile(
@@ -221,32 +166,24 @@ Widget _buildBody(HomeBookProvider provider) {
               ),
             ],
           ),
-          _buiderBookSection(
-            provider: provider,
-            title: '',
-            books: provider.searchResults,
-          ),
+          _buiderBookSection(title: '', books: provider.searchResults),
         ] else ...[
           _buiderBookSection(
-            provider: provider,
-            title: 'Continue Reading',
+            title: 'Continue...',
             books: provider.continueBooks,
-            emptyMessage: 'Chưa có sách đang đọc.',
-            openContinueReader: true,
+            emptyMessage: 'Chua co sach dang doc tiep.',
           ),
           _buiderBookSection(
-            provider: provider,
             title: 'From Library',
             books: provider.libraryBooks,
-            emptyMessage: 'Thư viện đang trống.',
+            emptyMessage: 'Thu vien dang trong.',
           ),
           for (final entry in provider.recommendationSections.entries)
             _buiderBookSection(
-              provider: provider,
               title: 'Recommendations - ${entry.key}',
               books: entry.value,
               emptyMessage:
-                  'Không tải được sách miễn phí từ Google Books cho mục này.',
+                  'Khong tai duoc sach mien phi tu Google Books cho muc nay.',
             ),
         ],
       ],
@@ -255,12 +192,10 @@ Widget _buildBody(HomeBookProvider provider) {
 }
 
 Widget _buiderBookSection({
-  required HomeBookProvider provider,
   required String title,
   required List<Book> books,
   String emptyMessage =
-      'Không tìm thấy sách hoặc Google Books đang giới hạn truy cập.',
-  bool openContinueReader = false,
+      'Khong tim thay sach hoac Google Books dang gioi han truy cap.',
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +206,10 @@ Widget _buiderBookSection({
       ],
 
       if (books.isEmpty)
-        Padding(padding: const EdgeInsets.all(12), child: Text(emptyMessage))
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(emptyMessage),
+        )
       else
         SizedBox(
           height: 230,

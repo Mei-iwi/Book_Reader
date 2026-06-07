@@ -43,7 +43,7 @@ class _LibraryPageState extends State<LibraryPage> {
         actions: [
           IconButton(
             icon: Icon(_showGrid ? Icons.view_list : Icons.grid_view),
-            tooltip: _showGrid ? 'Xem dạng danh sách' : 'Xem dạng lưới',
+            tooltip: _showGrid ? 'Xem dang danh sach' : 'Xem dang luoi',
             onPressed: () => setState(() => _showGrid = !_showGrid),
           ),
           IconButton(
@@ -87,7 +87,7 @@ class _LibraryPageState extends State<LibraryPage> {
           if (books.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(child: Text('Không có sách trong mục này.')),
+              child: Center(child: Text('Khong co sach trong muc nay.')),
             )
           else if (_showGrid)
             SliverPadding(
@@ -134,11 +134,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
   List<Book> _filteredBooks(List<Book> books) {
     if (_selectedCategory == 'downloaded') {
-      return books.where((book) {
-        return book.isDownloaded ||
-            book.localFilePath.trim().isNotEmpty ||
-            book.source == 'local_import';
-      }).toList();
+      return books.where((book) => book.isDownloaded).toList();
     }
     if (_selectedCategory == 'all') return books;
     return books
@@ -212,9 +208,6 @@ class _LibraryPageState extends State<LibraryPage> {
         if (!mounted) return;
         await provider.loadOfflineBooks(userId: userId);
         if (context.mounted) {
-          setState(() {
-            _selectedCategory = 'downloaded';
-          });
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Import thành công!')));

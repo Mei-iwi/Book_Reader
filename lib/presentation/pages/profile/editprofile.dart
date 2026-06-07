@@ -336,9 +336,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final path = result?.files.single.path;
     if (path == null || path.trim().isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Chua chon anh avatar.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chua chon anh avatar.')),
+      );
       return;
     }
 

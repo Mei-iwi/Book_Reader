@@ -6,7 +6,6 @@ Widget bookReading({
   required String name,
   required double percent,
   VoidCallback? onTap,
-  VoidCallback? onDelete,
 }) {
   return Builder(
     builder: (context) {

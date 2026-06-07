@@ -1,10 +1,10 @@
-import 'package:book_reader/config/backend_config.dart';
-
 class ApiConstants {
   static const String googleBooksBaseUrl = 'https://www.googleapis.com';
   static const String volumesEndpoint = '/books/v1/volumes';
 
-  static final String backendBaseUrl = BackendConfig.backendBaseUrl;
+  // Android emulator maps host machine localhost to 10.0.2.2.
+  // For a real phone, replace 10.0.2.2 with the LAN IP of the backend machine.
+  static const String backendBaseUrl = 'http://10.0.2.2:5102/api';
 
   static const String authLogin = '/auth/login';
   static const String authRegister = '/auth/register';

@@ -48,9 +48,7 @@ void main() {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(authRepository, sessionStorage),
         ),
-        ChangeNotifierProvider(
-          create: (_) => HomeBookProvider(bookRepository, readingProgressDao),
-        ),
+        ChangeNotifierProvider(create: (_) => HomeBookProvider(bookRepository)),
         ChangeNotifierProvider(
           create: (_) => BookProvider(SearchBooks(bookRepository)),
         ),

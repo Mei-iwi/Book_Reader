@@ -69,7 +69,8 @@ class GoogleBooksApi {
     } catch (_) {
       if (int.tryParse(bookId) != null) rethrow;
       final uri = Uri.https('www.googleapis.com', '/books/v1/volumes/$bookId', {
-        if (_googleBooksApiKey.trim().isNotEmpty) 'key': _googleBooksApiKey,
+        if (Env.googleBooksApiKey.trim().isNotEmpty)
+          'key': Env.googleBooksApiKey,
       });
       final response = await http.get(uri).timeout(const Duration(seconds: 20));
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -96,7 +97,8 @@ class GoogleBooksApi {
         if (langRestrict != null && langRestrict.trim().isNotEmpty)
           'langRestrict': langRestrict,
         if (onlyFreeEbooks) 'filter': 'free-ebooks',
-        if (_googleBooksApiKey.trim().isNotEmpty) 'key': _googleBooksApiKey,
+        if (Env.googleBooksApiKey.trim().isNotEmpty)
+          'key': Env.googleBooksApiKey,
       };
       final uri = Uri.https('www.googleapis.com', '/books/v1/volumes', query);
       final response = await http.get(uri).timeout(const Duration(seconds: 20));

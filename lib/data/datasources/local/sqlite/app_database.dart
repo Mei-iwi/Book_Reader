@@ -78,7 +78,7 @@ class AppDatabase {
   ''');
 
     await db.execute('''
-    CREATE TABLE IF NOT EXISTS comments (
+    CREATE TABLE comments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id TEXT NOT NULL,
       user_name TEXT NOT NULL,
@@ -88,7 +88,7 @@ class AppDatabase {
   ''');
 
     await db.execute('''
-    CREATE TABLE IF NOT EXISTS user_profile (
+    CREATE TABLE user_profile (
       id TEXT PRIMARY KEY,
       full_name TEXT,
       email TEXT,
@@ -98,7 +98,7 @@ class AppDatabase {
   ''');
 
     await db.execute('''
-    CREATE TABLE IF NOT EXISTS favorites (
+    CREATE TABLE favorites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -107,69 +107,5 @@ class AppDatabase {
       created_at TEXT NOT NULL
     )
   ''');
-
-    await _ensureColumn(db, 'offline_books', 'authors', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'description', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'thumbnail_url', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'categories', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'page_count', 'INTEGER DEFAULT 0');
-    await _ensureColumn(db, 'offline_books', 'language', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'preview_link', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'web_reader_link', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'source', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'pdf_download_link', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'epub_download_link', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'local_file_path', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'cover_local_path', 'TEXT');
-    await _ensureColumn(
-      db,
-      'offline_books',
-      'is_downloaded',
-      'INTEGER DEFAULT 0',
-    );
-    await _ensureColumn(db, 'offline_books', 'downloaded_at', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'created_at', 'TEXT');
-    await _ensureColumn(db, 'offline_books', 'updated_at', 'TEXT');
-
-    await _ensureColumn(
-      db,
-      'reading_progress',
-      'current_page',
-      'INTEGER DEFAULT 0',
-    );
-    await _ensureColumn(
-      db,
-      'reading_progress',
-      'progress_percent',
-      'REAL DEFAULT 0',
-    );
-    await _ensureColumn(db, 'reading_progress', 'updated_at', 'TEXT');
-
-    await _ensureColumn(db, 'bookmarks', 'note', 'TEXT');
-    await _ensureColumn(db, 'bookmarks', 'created_at', 'TEXT');
-
-    await _ensureColumn(db, 'user_profile', 'full_name', 'TEXT');
-    await _ensureColumn(db, 'user_profile', 'email', 'TEXT');
-    await _ensureColumn(db, 'user_profile', 'avatar_path', 'TEXT');
-    await _ensureColumn(db, 'user_profile', 'updated_at', 'TEXT');
-
-    await _ensureColumn(db, 'favorites', 'author', 'TEXT');
-    await _ensureColumn(db, 'favorites', 'cover_url', 'TEXT');
-    await _ensureColumn(db, 'favorites', 'created_at', 'TEXT');
-  }
-
-  Future<void> _ensureColumn(
-    Database db,
-    String tableName,
-    String columnName,
-    String columnType,
-  ) async {
-    final columns = await db.rawQuery('PRAGMA table_info($tableName)');
-    final exists = columns.any((column) => column['name'] == columnName);
-    if (exists) return;
-
-    await db.execute(
-      'ALTER TABLE $tableName ADD COLUMN $columnName $columnType',
-    );
   }
 }
