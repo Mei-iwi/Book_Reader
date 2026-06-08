@@ -37,9 +37,13 @@ class HomeBookProvider extends ChangeNotifier {
       errMessage = null;
       notifyListeners();
 
-      final savedBooks = await _bookRepository.getOfflineBooks();
-      final backendBooks = await _loadBackendBooks();
-      final continueReadingBooks = await _loadContinueBooks(savedBooks);
+      final savedBooksFuture = _bookRepository.getOfflineBooks();
+      final backendBooksFuture = _loadBackendBooks();
+
+      final savedBooks = await savedBooksFuture;
+      final continueReadingBooksFuture = _loadContinueBooks(savedBooks);
+      final backendBooks = await backendBooksFuture;
+      final continueReadingBooks = await continueReadingBooksFuture;
 
       continueBooks = continueReadingBooks;
       libraryBooks = savedBooks.take(6).toList();
@@ -211,30 +215,34 @@ class HomeBookProvider extends ChangeNotifier {
     if (progressRows.isEmpty) return [];
 
     final savedById = {for (final book in savedBooks) book.id: book};
-    final books = <Book>[];
+    final bookFutures = <Future<Book?>>[];
     final addedIds = <String>{};
 
     for (final row in progressRows) {
       final bookId = row['book_id']?.toString() ?? '';
       if (bookId.isEmpty || addedIds.contains(bookId)) continue;
+      addedIds.add(bookId);
 
       final cachedBook = savedById[bookId];
       if (cachedBook != null) {
-        books.add(cachedBook);
-        addedIds.add(bookId);
+        bookFutures.add(Future.value(cachedBook));
         continue;
       }
 
-      try {
-        final book = await _bookRepository.getBookDetail(bookId);
-        books.add(book);
-        addedIds.add(bookId);
-      } catch (e) {
-        debugPrint('LOAD CONTINUE BOOK DETAIL ERROR: $e');
-      }
+      bookFutures.add(_loadContinueBookDetail(bookId));
     }
 
+    final books = (await Future.wait(bookFutures)).whereType<Book>();
     return books.take(5).toList();
+  }
+
+  Future<Book?> _loadContinueBookDetail(String bookId) async {
+    try {
+      return await _bookRepository.getBookDetail(bookId);
+    } catch (e) {
+      debugPrint('LOAD CONTINUE BOOK DETAIL ERROR: $e');
+      return null;
+    }
   }
 
   void clearSearch() {

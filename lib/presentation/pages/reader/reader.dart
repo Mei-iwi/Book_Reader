@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:book_reader/config/routes.dart';
@@ -87,6 +88,8 @@ class _Reader extends State<Reader> {
   String? _webErrorMessage;
   String _readingMode = 'light';
   double _fontScale = 1;
+  double _lightLevel = 1;
+  Timer? _progressSyncTimer;
 
   String get _onlineLink {
     final webReaderLink = widget.webReaderLink?.trim() ?? '';
@@ -113,6 +116,16 @@ class _Reader extends State<Reader> {
     }
 
     return _textPageCount <= 0 ? 1 : _textPageCount;
+  }
+
+  double get _progressPercent {
+    final totalPage = _currentTotalPage <= 0 ? 1 : _currentTotalPage;
+    return ((_safeCurrentPage / totalPage) * 100).clamp(0, 100).toDouble();
+  }
+
+  int get _safeCurrentPage {
+    final totalPage = _currentTotalPage <= 0 ? 1 : _currentTotalPage;
+    return newvalue.clamp(1, totalPage).toInt();
   }
 
   String get _webViewUrl {
@@ -183,7 +196,8 @@ class _Reader extends State<Reader> {
 
   @override
   void dispose() {
-    _saveProgress();
+    _progressSyncTimer?.cancel();
+    _saveProgress(syncNow: true);
     _pageController.dispose();
     super.dispose();
   }
@@ -379,23 +393,26 @@ class _Reader extends State<Reader> {
   }
 
   void _jumpToCurrentTextPage() {
-    if (!_pageController.hasClients || _shouldUseWebView || _usesExternalReader) {
+    if (!_pageController.hasClients ||
+        _shouldUseWebView ||
+        _usesExternalReader) {
       return;
     }
     final pageIndex = (newvalue - 1).clamp(0, _currentTotalPage - 1).toInt();
     _pageController.jumpToPage(pageIndex);
   }
 
-  Future<void> _saveProgress() async {
+  Future<void> _saveProgress({bool syncNow = false}) async {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
 
     final totalPage = _currentTotalPage;
-    final progressPercent = ((newvalue / totalPage) * 100).clamp(0, 100).toDouble();
+    final currentPage = _safeCurrentPage;
+    final progressPercent = _progressPercent;
 
     await _readingProgressDao.saveProgress(
       bookId: bookId,
-      currentPage: newvalue,
+      currentPage: currentPage,
       totalPage: totalPage,
       progressPercent: progressPercent,
       bookTitle: widget.title,
@@ -410,10 +427,52 @@ class _Reader extends State<Reader> {
     final userId = widget.userId;
     if (backendBookId == null || userId == null) return;
 
+    if (syncNow) {
+      _progressSyncTimer?.cancel();
+      await _syncProgressToBackend(
+        bookId: backendBookId,
+        currentPage: currentPage,
+        progressPercent: progressPercent,
+        userId: userId,
+      );
+      return;
+    }
+
+    _scheduleProgressSync(
+      bookId: backendBookId,
+      currentPage: currentPage,
+      progressPercent: progressPercent,
+      userId: userId,
+    );
+  }
+
+  void _scheduleProgressSync({
+    required int bookId,
+    required int currentPage,
+    required double progressPercent,
+    required int userId,
+  }) {
+    _progressSyncTimer?.cancel();
+    _progressSyncTimer = Timer(const Duration(milliseconds: 800), () {
+      _syncProgressToBackend(
+        bookId: bookId,
+        currentPage: currentPage,
+        progressPercent: progressPercent,
+        userId: userId,
+      );
+    });
+  }
+
+  Future<void> _syncProgressToBackend({
+    required int bookId,
+    required int currentPage,
+    required double progressPercent,
+    required int userId,
+  }) async {
     try {
       await _readingProgressApi.saveProgress(
-        bookId: backendBookId,
-        currentPage: newvalue,
+        bookId: bookId,
+        currentPage: currentPage,
         progressPercent: progressPercent,
         userId: userId,
       );
@@ -425,12 +484,10 @@ class _Reader extends State<Reader> {
   Future<void> _saveBookmark() async {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
+    final note = _bookmarkNote();
+    final page = _safeCurrentPage;
 
-    await _bookmarkDao.addBookmark(
-      bookId: bookId,
-      page: newvalue,
-      note: _bookmarkNote(),
-    );
+    await _bookmarkDao.addBookmark(bookId: bookId, page: page, note: note);
 
     final backendBookId = int.tryParse(bookId);
     final userId = widget.userId;
@@ -439,7 +496,8 @@ class _Reader extends State<Reader> {
     try {
       await _bookmarkApi.addBookmark(
         bookId: backendBookId,
-        page: newvalue,
+        page: page,
+        note: note,
         userId: userId,
       );
     } catch (e) {
@@ -465,18 +523,16 @@ class _Reader extends State<Reader> {
     }
 
     await _saveBookmark();
-    await _saveProgress();
+    await _saveProgress(syncNow: true);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Đã lưu bookmark trang $newvalue')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Đã lưu bookmark trang $_safeCurrentPage')),
+    );
   }
 
   String _bookmarkNote() {
-    if (!(_shouldUseWebView || _usesExternalReader)) return '';
-    final percent = ((newvalue / _currentTotalPage) * 100).clamp(0, 100);
-    return 'Mốc đọc ${percent.toStringAsFixed(0)}%';
+    return 'Trang $_safeCurrentPage - ${_progressPercent.toStringAsFixed(0)}%';
   }
 
   Future<void> _showBookmarksDialog() async {
@@ -524,7 +580,9 @@ class _Reader extends State<Reader> {
 
                 return ListTile(
                   title: Text(note.isNotEmpty ? note : 'Trang $page'),
-                  subtitle: note.isEmpty ? null : Text('Trang tham chiếu $page'),
+                  subtitle: note.isEmpty
+                      ? null
+                      : Text('Trang tham chiếu $page'),
                   trailing: IconButton(
                     tooltip: 'Xóa bookmark',
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -537,11 +595,7 @@ class _Reader extends State<Reader> {
                   ),
                   onTap: () {
                     Navigator.pop(dialogContext);
-                    final totalPage = widget.total <= 0 ? 1 : widget.total;
-                    setState(() {
-                      newvalue = page.clamp(1, totalPage).toInt();
-                    });
-                    _saveProgress();
+                    _goToTextPage(page);
                   },
                 );
               },
@@ -583,7 +637,6 @@ class _Reader extends State<Reader> {
           ),
           TextButton(
             onPressed: () async {
-              // TODO: xử lý lưu bookmark ở đây
               Navigator.pop(dialogContext);
               await _leaveReader(parentContext, saveBookmark: true);
             },
@@ -615,7 +668,7 @@ class _Reader extends State<Reader> {
     if (saveBookmark) {
       await _saveBookmark();
     }
-    await _saveProgress();
+    await _saveProgress(syncNow: true);
 
     if (!parentContext.mounted) return;
     Navigator.of(parentContext, rootNavigator: true).pop();
@@ -638,7 +691,9 @@ class _Reader extends State<Reader> {
 
   void _goToTextPage(int page) {
     final targetPage = page.clamp(1, _currentTotalPage).toInt();
-    if (_pageController.hasClients && !_shouldUseWebView && !_usesExternalReader) {
+    if (_pageController.hasClients &&
+        !_shouldUseWebView &&
+        !_usesExternalReader) {
       _pageController.animateToPage(
         targetPage - 1,
         duration: const Duration(milliseconds: 220),
@@ -688,7 +743,9 @@ class _Reader extends State<Reader> {
     String saveText = 'Lưu',
   }) async {
     final totalPage = _currentTotalPage;
-    var selectedPercent = ((newvalue / totalPage) * 100).clamp(0, 100).toDouble();
+    var selectedPercent = ((newvalue / totalPage) * 100)
+        .clamp(0, 100)
+        .toDouble();
 
     final saved = await showDialog<bool>(
       context: context,
@@ -696,7 +753,7 @@ class _Reader extends State<Reader> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Cập nhật tiến độ đọc'),
+              title: Text(title),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -729,11 +786,11 @@ class _Reader extends State<Reader> {
                     setState(() {
                       newvalue = page;
                     });
-                    await _saveProgress();
+                    await _saveProgress(syncNow: true);
                     if (!dialogContext.mounted) return;
                     Navigator.pop(dialogContext, true);
                   },
-                  child: const Text('Lưu'),
+                  child: Text(saveText),
                 ),
               ],
             );
@@ -761,10 +818,12 @@ class _Reader extends State<Reader> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
+                  const Text('Nền đọc'),
+                  const SizedBox(height: 8),
                   SegmentedButton<String>(
                     segments: const [
-                      ButtonSegment(value: 'light', label: Text('Sáng')),
-                      ButtonSegment(value: 'sepia', label: Text('Sepia')),
+                      ButtonSegment(value: 'light', label: Text('Trắng')),
+                      ButtonSegment(value: 'sepia', label: Text('Giấy')),
                       ButtonSegment(value: 'dark', label: Text('Tối')),
                     ],
                     selected: {_readingMode},
@@ -772,6 +831,19 @@ class _Reader extends State<Reader> {
                       final value = values.first;
                       setSheetState(() => _readingMode = value);
                       setState(() => _readingMode = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Ánh sáng: ${(_lightLevel * 100).toStringAsFixed(0)}%'),
+                  Slider(
+                    value: _lightLevel,
+                    min: 0.65,
+                    max: 1.35,
+                    divisions: 14,
+                    label: '${(_lightLevel * 100).toStringAsFixed(0)}%',
+                    onChanged: (value) {
+                      setSheetState(() => _lightLevel = value);
+                      setState(() => _lightLevel = value);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -1064,11 +1136,25 @@ class _Reader extends State<Reader> {
       );
     }
 
+    final lightOverlayColor = _readerLightOverlayColor();
+
     return Column(
       children: [
         if (_webProgress < 100)
           LinearProgressIndicator(value: _webProgress / 100),
-        Expanded(child: WebViewWidget(controller: controller)),
+        Expanded(
+          child: Stack(
+            children: [
+              WebViewWidget(controller: controller),
+              if (lightOverlayColor != null)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(color: lightOverlayColor),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1104,161 +1190,165 @@ class _Reader extends State<Reader> {
 
     final backgroundColor = _readerBackgroundColor();
     final textColor = _readerTextColor();
+    final lightOverlayColor = _readerLightOverlayColor();
 
     return ColoredBox(
       color: backgroundColor,
       child: Stack(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 50),
-          child: FutureBuilder<List<String>>(
-            future: _pagesFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 50),
+            child: FutureBuilder<List<String>>(
+              future: _pagesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              if (snapshot.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Không thể tải nội dung sách:\n${snapshot.error}',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                );
-              }
-
-              final pages = snapshot.data ?? const <String>[''];
-              final totalPages = pages.isEmpty ? 1 : pages.length;
-              return PageView.builder(
-                controller: _pageController,
-                itemCount: totalPages,
-                onPageChanged: (index) {
-                  final page = index + 1;
-                  if (newvalue == page) return;
-                  setState(() {
-                    newvalue = page;
-                  });
-                  _saveProgress();
-                },
-                itemBuilder: (context, index) {
-                  final content = pages.isEmpty ? '' : pages[index];
-                  return SingleChildScrollView(
-                    child: Center(
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          content,
-                          style: TextStyle(
-                            fontSize: 18 * _fontScale,
-                            height: 1.6,
-                            color: textColor,
-                          ),
-                        ),
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Không thể tải nội dung sách:\n${snapshot.error}',
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   );
-                },
-              );
-            },
-          ),
-        ),
+                }
 
-        Positioned(
-          right: 0,
-          top: 0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 13),
-            decoration: BoxDecoration(
-              color: Colors.blue[600],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(100),
-                bottomLeft: Radius.circular(100),
-              ),
-            ),
-            child: Text(
-              'Page $newvalue',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: Colors.white,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-        ),
-
-        Positioned(
-          top: 10,
-          left: 0,
-          child: Container(
-            padding: const EdgeInsets.only(
-              top: 5,
-              bottom: 5,
-              left: 0,
-              right: 10,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(100),
-                bottomRight: Radius.circular(100),
-              ),
-            ),
-            child: Row(
-              children: [
-                InkWell(
-                  onTap: () {},
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[200],
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(100),
-                        bottomRight: Radius.circular(100),
+                final pages = snapshot.data ?? const <String>[''];
+                final totalPages = pages.isEmpty ? 1 : pages.length;
+                return PageView.builder(
+                  controller: _pageController,
+                  itemCount: totalPages,
+                  onPageChanged: (index) {
+                    final page = index + 1;
+                    if (newvalue == page) return;
+                    setState(() {
+                      newvalue = page;
+                    });
+                    _saveProgress();
+                  },
+                  itemBuilder: (context, index) {
+                    final content = pages.isEmpty ? '' : pages[index];
+                    return SingleChildScrollView(
+                      child: Center(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            content,
+                            style: TextStyle(
+                              fontSize: 18 * _fontScale,
+                              height: 1.6,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: const Icon(Icons.menu, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 5),
-                InkWell(
-                  onTap: () {},
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[200],
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: const Icon(Icons.text_format, color: Colors.white),
-                  ),
-                ),
-              ],
+                    );
+                  },
+                );
+              },
             ),
           ),
-        ),
 
-        Positioned(
-          bottom: 50,
-          right: 20,
-          child: InkWell(
-            onTap: () {
-              // TODO: xử lý chế độ bảo vệ mắt
-            },
+          if (lightOverlayColor != null)
+            Positioned.fill(
+              child: IgnorePointer(child: ColoredBox(color: lightOverlayColor)),
+            ),
+
+          Positioned(
+            right: 0,
+            top: 0,
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 13),
               decoration: BoxDecoration(
-                color: Colors.blue[200],
-                borderRadius: BorderRadius.circular(100),
+                color: Colors.blue[600],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(100),
+                  bottomLeft: Radius.circular(100),
+                ),
               ),
-              child: const Icon(Icons.remove_red_eye, color: Colors.white),
+              child: Text(
+                'Page $_safeCurrentPage - ${_progressPercent.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.white,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+
+          Positioned(
+            top: 10,
+            left: 0,
+            child: Container(
+              padding: const EdgeInsets.only(
+                top: 5,
+                bottom: 5,
+                left: 0,
+                right: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(100),
+                  bottomRight: Radius.circular(100),
+                ),
+              ),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () {},
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[200],
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(100),
+                          bottomRight: Radius.circular(100),
+                        ),
+                      ),
+                      child: const Icon(Icons.menu, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  InkWell(
+                    onTap: () {},
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[200],
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: const Icon(Icons.text_format, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          Positioned(
+            bottom: 50,
+            right: 20,
+            child: InkWell(
+              onTap: _showReadingModeSheet,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue[200],
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: const Icon(Icons.light_mode, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1272,6 +1362,19 @@ class _Reader extends State<Reader> {
   Color _readerTextColor() {
     if (_readingMode == 'dark') return const Color(0xFFEDEDED);
     return const Color(0xFF202124);
+  }
+
+  Color? _readerLightOverlayColor() {
+    final delta = _lightLevel - 1;
+    if (delta.abs() < 0.01) return null;
+
+    if (delta > 0) {
+      final alpha = ((delta / 0.35) * 0.28).clamp(0, 0.28).toDouble();
+      return Colors.white.withValues(alpha: alpha);
+    }
+
+    final alpha = (((-delta) / 0.35) * 0.32).clamp(0, 0.32).toDouble();
+    return Colors.black.withValues(alpha: alpha);
   }
 
   Widget _buildBottomPageNavigation(int totalPage) {
@@ -1292,12 +1395,17 @@ class _Reader extends State<Reader> {
               color: Colors.grey,
             ),
           ),
-          Text(
-            'Page $newvalue of $totalPage',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-              fontSize: 18,
+          Flexible(
+            child: Text(
+              'Page $_safeCurrentPage of $totalPage - ${_progressPercent.toStringAsFixed(0)}%',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                fontSize: 18,
+              ),
             ),
           ),
           IconButton(
