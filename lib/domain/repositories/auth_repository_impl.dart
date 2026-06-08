@@ -1,11 +1,17 @@
 import 'package:book_reader/data/datasources/remote/api/auth_api.dart';
+import 'package:book_reader/data/datasources/remote/firebase/firebase_google_auth_datasource.dart';
 import 'package:book_reader/domain/entities/app_user.dart';
 import 'package:book_reader/domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthApi _authApi;
+  final FirebaseGoogleAuthDataSource _googleAuthDataSource;
 
-  AuthRepositoryImpl(this._authApi);
+  AuthRepositoryImpl(
+    this._authApi, {
+    FirebaseGoogleAuthDataSource? googleAuthDataSource,
+  }) : _googleAuthDataSource =
+           googleAuthDataSource ?? FirebaseGoogleAuthDataSource();
 
   @override
   void setToken(String? token) {
@@ -15,6 +21,11 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<AppUser> login({required String email, required String password}) {
     return _authApi.login(email: email, password: password);
+  }
+
+  @override
+  Future<AppUser> signInWithGoogle() {
+    return _googleAuthDataSource.signInWithGoogle();
   }
 
   @override
@@ -49,5 +60,10 @@ class AuthRepositoryImpl implements AuthRepository {
       password: password,
       confirmPassword: confirmPassword,
     );
+  }
+
+  @override
+  Future<void> signOut() {
+    return _googleAuthDataSource.signOut();
   }
 }

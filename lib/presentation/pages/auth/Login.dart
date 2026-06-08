@@ -1,9 +1,12 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
-import 'package:book_reader/core/widgets/ShareWidgetAuth/signup_other.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/signup_other.dart';
+import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/widgets/ShareWidgetAuth/banner.dart';
 
 class Login extends StatefulWidget {
@@ -14,8 +17,27 @@ class Login extends StatefulWidget {
 }
 
 class _Login extends State<Login> {
+  Future<void> _loginWithGoogle() async {
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.loginWithGoogle();
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushReplacementNamed(context, AppRoute.home);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Google login failed'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -39,20 +61,22 @@ class _Login extends State<Login> {
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.only(bottom: 30),
-
         child: BottomAppBar(
           color: Colors.white,
           height: 100,
           child: Column(
             children: [
               Text(
-                "or Sign up with",
+                isLoading ? "Signing in..." : "or Sign up with",
                 style: TextStyle(color: Colors.grey, fontSize: 15),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  signUpOther(Myimages.iconGoogle, () {}),
+                  signUpOther(
+                    Myimages.iconGoogle,
+                    isLoading ? () {} : _loginWithGoogle,
+                  ),
                   SizedBox(width: 10),
                   signUpOther(Myimages.iconFaceBook, () {}),
                   SizedBox(width: 10),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:book_reader/data/datasources/local/dao/offline_book_dao.dart';
 import 'package:book_reader/data/datasources/local/file_cache/book_file_downloader.dart';
+import 'package:book_reader/data/datasources/remote/api/backend_books_api.dart';
 import 'package:book_reader/data/datasources/remote/api/google_books_api.dart';
 import 'package:book_reader/data/datasources/remote/api/gutendex_api.dart';
 import 'package:book_reader/data/models/book_model.dart';
@@ -11,17 +12,32 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 class BookRepositoryImpl implements BookRepository {
+  final BackendBooksApi _backendBooksApi;
   final GoogleBooksApi _googleBooksApi;
   final GutendexApi _gutendexApi;
   final OfflineBookDao _offlineBookDao;
   final BookFileDownloader _bookFileDownloader;
 
   BookRepositoryImpl(
+    this._backendBooksApi,
     this._googleBooksApi,
     this._gutendexApi,
     this._offlineBookDao,
     this._bookFileDownloader,
   );
+
+  @override
+  Future<List<Book>> getBackendBooks({
+    String? keyword,
+    int page = 1,
+    int pageSize = 10,
+  }) {
+    return _backendBooksApi.getBooks(
+      keyword: keyword,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
 
   @override
   Future<Book> getBookDetail(String bookId) {
@@ -38,6 +54,8 @@ class BookRepositoryImpl implements BookRepository {
     bool onlyFreeEbooks = false,
     int maxResults = 10,
   }) async {
+    final backendBooks = await _safeBackendSearch(keyword, maxResults);
+
     final googleBooks = await _googleBooksApi.searchBooks(
       keyword: keyword,
       maxResult: maxResults,
@@ -51,8 +69,8 @@ class BookRepositoryImpl implements BookRepository {
 
     final merged = <String, Book>{};
     final orderedBooks = onlyFreeEbooks
-        ? [...gutendexBooks, ...googleBooks]
-        : [...googleBooks, ...gutendexBooks];
+        ? [...backendBooks, ...gutendexBooks, ...googleBooks]
+        : [...backendBooks, ...googleBooks, ...gutendexBooks];
 
     for (final book in orderedBooks) {
       merged.putIfAbsent(book.id, () => book);
@@ -60,6 +78,17 @@ class BookRepositoryImpl implements BookRepository {
     }
 
     return merged.values.toList();
+  }
+
+  Future<List<Book>> _safeBackendSearch(String keyword, int maxResults) async {
+    try {
+      return await _backendBooksApi.getBooks(
+        keyword: keyword,
+        pageSize: maxResults,
+      );
+    } catch (_) {
+      return [];
+    }
   }
 
   @override

@@ -197,3 +197,163 @@ Chi tiết xem `docs/final_validation_report.md`.
 - PDF remote thử render bằng WebView trong app; PDF/EPUB local vẫn mở bằng app ngoài.
 - Một số file/provider cũ vẫn tồn tại để tránh rename/delete nhiều trong giai đoạn hoàn thiện.
 - Một số text cũ trong source có thể cần chuẩn hóa encoding nếu tiếp tục phát triển.
+
+## Ghi chú kiểm tra mobile runtime 2026-06-08
+
+Phần này chỉ ghi lại kết quả kiểm tra cuối phiên, không sửa code cũ.
+
+### Kết quả đã chạy
+
+```powershell
+flutter analyze
+flutter test
+flutter build apk --debug --dart-define-from-file=firebase_env.json
+dotnet build backend\BookReader.Api\BookReader.Api.csproj
+adb devices
+flutter devices
+```
+
+Kết quả:
+
+- `flutter analyze`: No issues found.
+- `flutter test`: All tests passed.
+- `flutter build apk --debug --dart-define-from-file=firebase_env.json`: build thành công APK tại `build\app\outputs\flutter-apk\app-debug.apk`.
+- `dotnet build backend\BookReader.Api\BookReader.Api.csproj`: build thành công, 0 warning, 0 error.
+- `adb devices`: chưa thấy điện thoại Android được kết nối ở thời điểm kiểm tra, nên chưa thể tự động install/launch/logcat app trên máy thật.
+- `flutter devices`: chỉ thấy Windows desktop, Chrome, Edge; không thấy Android device.
+
+### Checklist chạy như app mobile thật
+
+1. Cắm điện thoại Android, bật Developer options và USB debugging.
+2. Kiểm tra máy đã nhận ADB:
+
+```powershell
+adb devices
+```
+
+Nếu chưa thấy device, đổi cáp/cổng USB hoặc chọn lại chế độ USB trên điện thoại.
+
+3. Chạy backend trên máy tính:
+
+```powershell
+dotnet run --project backend\BookReader.Api\BookReader.Api.csproj
+```
+
+4. Nếu chạy điện thoại thật qua USB, mở reverse port để app gọi backend local:
+
+```powershell
+adb reverse tcp:5102 tcp:5102
+```
+
+5. Chạy app với Firebase env:
+
+```powershell
+flutter run --dart-define-from-file=firebase_env.json
+```
+
+6. Nếu app cũ/cache gây lỗi, gỡ app trước rồi chạy lại:
+
+```powershell
+adb uninstall com.example.book_reader
+flutter run --dart-define-from-file=firebase_env.json
+```
+
+### Firebase/Google Sign-In cần đúng
+
+- Android package trong Firebase phải là `com.example.book_reader`.
+- Google provider trong Firebase Authentication phải được bật.
+- `firebase_env.json` phải có `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_API_KEY`, `FIREBASE_GOOGLE_CLIENT_ID`, `FIREBASE_GOOGLE_SERVER_CLIENT_ID`.
+- Debug SHA cần khai báo trong Firebase Android app:
+
+```text
+SHA-1: 53:41:95:AA:E1:CC:AA:EE:80:9D:AB:B0:E1:86:BA:DF:18:64:AF:72
+SHA-256: 39:17:3A:8C:CD:16:74:44:6A:39:B7:12:06:76:8F:86:83:B7:9F:67:29:54:A7:15:27:28:ED:F4:0E:FF:82:AD
+```
+
+Ghi chú: app đang dùng Google Sign-In picker kiểu cũ (`google_sign_in` 6.3.0) để tránh lỗi màn Credential Manager trắng trên một số máy Android/Vivo.
+
+### Luồng demo nên thử khi có điện thoại
+
+1. Mở app từ splash vào login.
+2. Đăng nhập Google, xác nhận vào được Home.
+3. Tìm sách bằng ô search trên Home.
+4. Mở detail một sách Google/Gutendex.
+5. Bấm lưu/download vào Library.
+6. Mở Library và đọc lại sách đã lưu.
+7. Kiểm tra Profile/history/favorite nếu có dữ liệu.
+
+Nếu Home không tải sách từ backend, kiểm tra backend đang chạy ở `http://localhost:5102` và đã chạy `adb reverse tcp:5102 tcp:5102`.
+
+## Ghi chú kiểm tra google-services và backend 2026-06-08
+
+### Firebase Android config
+
+File `android/app/google-services.json` hiện thuộc Firebase project:
+
+```text
+project_id: book-reader-8c22c
+package_name: com.example.book_reader
+```
+
+`firebase_env.json` đã được chỉnh để khớp với project/API key/Web OAuth client trong file `google-services.json`.
+
+Điểm cần chú ý: `google-services.json` hiện chỉ thấy OAuth client loại Web (`client_type: 3`), chưa thấy Android OAuth client (`client_type: 1`). Nếu đăng nhập Google vẫn báo:
+
+```text
+PlatformException(sign_in_failed, com.google.android.gms.common.api.ApiException: 10:)
+```
+
+thì vào Firebase Console -> Project settings -> app Android `com.example.book_reader` -> thêm fingerprint debug:
+
+```text
+SHA-1: 53:41:95:AA:E1:CC:AA:EE:80:9D:AB:B0:E1:86:BA:DF:18:64:AF:72
+SHA-256: 39:17:3A:8C:CD:16:74:44:6A:39:B7:12:06:76:8F:86:83:B7:9F:67:29:54:A7:15:27:28:ED:F4:0E:FF:82:AD
+```
+
+Sau đó tải lại `google-services.json` mới và thay vào `android/app/google-services.json`.
+
+### Backend/API
+
+Đã test `GET http://localhost:5102/api/books` trả `200 OK` và có dữ liệu sách. Điện thoại thật qua USB đang cần reverse port:
+
+```powershell
+adb reverse tcp:5102 tcp:5102
+```
+
+Kiểm tra reverse hiện tại:
+
+```powershell
+adb reverse --list
+```
+
+Kết quả mong muốn có dòng:
+
+```text
+UsbFfs tcp:5102 tcp:5102
+```
+
+Nếu backend không lên hoặc Home không tải sách, kiểm tra lại `backend/BookReader.Api/appsettings.json` và `backend/BookReader.Api/appsettings.Development.json` cho đúng SQL Server local, rồi chạy lại:
+
+```powershell
+dotnet run --project backend\BookReader.Api\BookReader.Api.csproj --launch-profile http
+```
+
+Nếu lệnh trên báo `Failed to bind to address http://127.0.0.1:5102: address already in use`, nghĩa là backend đang chạy sẵn trên port `5102`; không cần chạy thêm, hoặc dừng process đó rồi chạy lại.
+
+## Ghi chú fix load sách backend 2026-06-08
+
+App đã có đường gọi trực tiếp `GET /api/books` từ backend và Home sẽ hiện section `Backend Books` lấy dữ liệu SQL Server trước, không phải chờ Google Books. Search cũng ưu tiên kết quả từ backend trước, sau đó mới merge thêm Google Books/Gutendex.
+
+Khi chạy trên điện thoại thật qua USB, cần đủ 2 thứ:
+
+```powershell
+dotnet run --project backend\BookReader.Api\BookReader.Api.csproj --launch-profile http
+adb reverse tcp:5102 tcp:5102
+```
+
+Đã kiểm tra:
+
+- `GET http://localhost:5102/api/books`: `200 OK`, có dữ liệu sách.
+- `flutter analyze`: No issues found.
+- `flutter test`: All tests passed.
+- `flutter build apk --debug --dart-define-from-file=firebase_env.json`: build thành công.

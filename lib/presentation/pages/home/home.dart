@@ -204,10 +204,13 @@ Widget _buildBody(HomeBookProvider provider) {
           ),
           for (final entry in provider.recommendationSections.entries)
             _buiderBookSection(
-              title: 'Recommendations - ${entry.key}',
+              title: entry.key == 'Backend Books'
+                  ? 'Backend Books'
+                  : 'Recommendations - ${entry.key}',
               books: entry.value,
-              emptyMessage:
-                  'Khong tai duoc sach mien phi tu Google Books cho muc nay.',
+              emptyMessage: entry.key == 'Backend Books'
+                  ? 'Khong tai duoc sach tu backend.'
+                  : 'Khong tai duoc sach mien phi tu Google Books cho muc nay.',
             ),
         ],
       ],

@@ -5,10 +5,12 @@ import 'package:book_reader/data/datasources/local/dao/offline_book_dao.dart';
 import 'package:book_reader/data/datasources/local/file_cache/book_file_downloader.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/datasources/remote/api/auth_api.dart';
+import 'package:book_reader/data/datasources/remote/api/backend_books_api.dart';
 import 'package:book_reader/data/datasources/remote/api/google_books_api.dart';
 import 'package:book_reader/data/datasources/remote/api/gutendex_api.dart';
 import 'package:book_reader/data/datasources/remote/api/library_api.dart';
 import 'package:book_reader/data/datasources/remote/api/membership_api.dart';
+import 'package:book_reader/data/datasources/remote/firebase/firebase_google_auth_datasource.dart';
 import 'package:book_reader/domain/repositories/auth_repository_impl.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/domain/repositories/book_repository_impl.dart';
@@ -25,6 +27,8 @@ import 'package:provider/provider.dart';
 void main() {
   final apiClient = ApiClient();
   final authApi = AuthApi(apiClient);
+  final googleAuthDataSource = FirebaseGoogleAuthDataSource();
+  final backendBooksApi = BackendBooksApi(apiClient);
   final googleBooksApi = GoogleBooksApi(apiClient);
   final gutendexApi = GutendexApi();
   final libraryApi = LibraryApi(apiClient);
@@ -36,12 +40,16 @@ void main() {
   final bookFileDownloader = BookFileDownloader();
 
   final bookRepository = BookRepositoryImpl(
+    backendBooksApi,
     googleBooksApi,
     gutendexApi,
     offlineBookDao,
     bookFileDownloader,
   );
-  final authRepository = AuthRepositoryImpl(authApi);
+  final authRepository = AuthRepositoryImpl(
+    authApi,
+    googleAuthDataSource: googleAuthDataSource,
+  );
   runApp(
     MultiProvider(
       providers: [

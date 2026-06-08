@@ -5,6 +5,8 @@ abstract class AuthRepository {
 
   Future<AppUser> login({required String email, required String password});
 
+  Future<AppUser> signInWithGoogle();
+
   Future<AppUser> register({
     required String fullName,
     required String email,
@@ -20,4 +22,6 @@ abstract class AuthRepository {
     String? password,
     String? confirmPassword,
   });
+
+  Future<void> signOut();
 }
