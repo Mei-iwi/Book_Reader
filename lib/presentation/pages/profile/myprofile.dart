@@ -11,8 +11,10 @@ import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/profile/editprofile.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
+import 'package:book_reader/presentation/pages/review/book_review_page.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
@@ -45,7 +47,7 @@ class _Myprofile extends State<Myprofile> {
 
     final favs = await favDao.getAllFavorites();
     await progDao.pruneOldProgress(keep: 10);
-    final hist = await progDao.getRecentProgress(limit: 10);
+    var hist = await progDao.getRecentProgress(limit: 10);
 
     Map<String, dynamic>? prof;
     if (user != null) {
@@ -56,6 +58,8 @@ class _Myprofile extends State<Myprofile> {
       await context.read<LibraryProvider>().loadOfflineBooks(
         userId: user?.userId,
       );
+      await _enrichHistoryRows(hist, progDao);
+      hist = await progDao.getRecentProgress(limit: 10);
     }
 
     if (mounted) {
@@ -72,6 +76,7 @@ class _Myprofile extends State<Myprofile> {
   Widget build(BuildContext context) {
     final currentUser = context.watch<AuthProvider>().currentUser;
     final libraryProvider = context.watch<LibraryProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     String fullName = 'Người dùng';
     String email = 'Chưa đăng nhập';
@@ -111,6 +116,15 @@ class _Myprofile extends State<Myprofile> {
           style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: themeProvider.isDarkMode
+                ? 'Chuyển sang giao diện sáng'
+                : 'Chuyển sang giao diện tối',
+            onPressed: themeProvider.toggleTheme,
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+          ),
           SizedBox(width: 10),
           InkWell(
             onTap: () {
@@ -340,14 +354,30 @@ class _Myprofile extends State<Myprofile> {
                                     bookId,
                                     libraryProvider.offlineBooks,
                                   );
+                                  final percent =
+                                      (hist['progress_percent'] ?? 0)
+                                          .toDouble();
+                                  final historyTitle =
+                                      hist['book_title']?.toString().trim() ??
+                                      '';
+                                  final historyCover =
+                                      hist['cover_url']?.toString().trim() ??
+                                      '';
+                                  final displayTitle =
+                                      book?.title ??
+                                      (historyTitle.isNotEmpty
+                                          ? historyTitle
+                                          : 'Sách đang đọc');
+                                  final displayCover =
+                                      book?.thumbnailUrl.isNotEmpty == true
+                                      ? book!.thumbnailUrl
+                                      : historyCover;
                                   return bookReading(
-                                    url: book?.thumbnailUrl.isNotEmpty == true
-                                        ? book!.thumbnailUrl
+                                    url: displayCover.isNotEmpty
+                                        ? displayCover
                                         : Templateimage.book1,
-                                    name:
-                                        book?.title ?? 'Dang doc (ID: $bookId)',
-                                    percent: (hist['progress_percent'] ?? 0)
-                                        .toDouble(),
+                                    name: displayTitle,
+                                    percent: percent,
                                     onTap: () => _openReaderFromHistory(
                                       context,
                                       hist,
@@ -355,6 +385,28 @@ class _Myprofile extends State<Myprofile> {
                                     ),
                                     onDelete: () =>
                                         _deleteReadingProgress(context, bookId),
+                                    action: percent >= 30
+                                        ? Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: OutlinedButton.icon(
+                                                  onPressed: () =>
+                                                      _openReviewPage(
+                                                        context,
+                                                        bookId,
+                                                        displayTitle,
+                                                        displayCover,
+                                                        book?.authors
+                                                                .join(', ') ??
+                                                            '',
+                                                      ),
+                                              icon: const Icon(
+                                                Icons.star_outline,
+                                                size: 18,
+                                              ),
+                                              label: const Text('Đánh giá'),
+                                            ),
+                                          )
+                                        : null,
                                   );
                                 }).toList(),
                               ),
@@ -385,6 +437,52 @@ class _Myprofile extends State<Myprofile> {
     return null;
   }
 
+  Future<void> _enrichHistoryRows(
+    List<Map<String, dynamic>> rows,
+    ReadingProgressDao progDao,
+  ) async {
+    final libraryBooks = context.read<LibraryProvider>().offlineBooks;
+    final repo = context.read<BookRepository>();
+
+    for (final row in rows) {
+      final bookId = row['book_id']?.toString() ?? '';
+      if (bookId.isEmpty) continue;
+
+      final hasTitle =
+          row['book_title']?.toString().trim().isNotEmpty == true;
+      final hasCover = row['cover_url']?.toString().trim().isNotEmpty == true;
+      if (hasTitle && hasCover) continue;
+
+      Book? book = _findBook(bookId, libraryBooks);
+      if (book == null) {
+        try {
+          book = await repo.getBookDetail(bookId);
+          await repo.saveBookMetadataOffline(book);
+        } catch (_) {
+          book = null;
+        }
+      }
+      if (book == null) continue;
+
+      final currentPage = (row['current_page'] as num?)?.toInt() ?? 1;
+      final totalPage =
+          (row['total_page'] as num?)?.toInt() ??
+          (book.pageCount > 0 ? book.pageCount : 1);
+      final progressPercent =
+          (row['progress_percent'] as num?)?.toDouble() ??
+          ((currentPage / totalPage) * 100);
+
+      await progDao.saveProgress(
+        bookId: bookId,
+        currentPage: currentPage,
+        totalPage: totalPage <= 0 ? 1 : totalPage,
+        progressPercent: progressPercent,
+        bookTitle: book.title,
+        coverUrl: book.thumbnailUrl,
+      );
+    }
+  }
+
   Future<void> _deleteReadingProgress(
     BuildContext context,
     String bookId,
@@ -397,7 +495,7 @@ class _Myprofile extends State<Myprofile> {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Da xoa tien do doc')));
+    ).showSnackBar(const SnackBar(content: Text('Đã xóa tiến độ đọc')));
   }
 
   Future<void> _openReaderFromHistory(
@@ -428,7 +526,14 @@ class _Myprofile extends State<Myprofile> {
         builder: (_) => Reader(
           value: currentPage,
           total: (book?.pageCount ?? 0) > 0 ? book!.pageCount : 1,
-          title: book?.title ?? 'Reading',
+          title:
+              book?.title ??
+              history['book_title']?.toString() ??
+              'Sách đang đọc',
+          coverUrl:
+              book?.thumbnailUrl ??
+              history['cover_url']?.toString() ??
+              '',
           bookId: bookId,
           userId: context.read<AuthProvider>().currentUser?.userId,
           localFilePath: book?.localFilePath,
@@ -443,5 +548,26 @@ class _Myprofile extends State<Myprofile> {
     if (mounted) {
       _loadData();
     }
+  }
+
+  Future<void> _openReviewPage(
+    BuildContext context,
+    String bookId,
+    String title,
+    String coverUrl,
+    String author,
+  ) async {
+    if (bookId.isEmpty) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookReviewPage(
+          bookId: bookId,
+          title: title,
+          coverUrl: coverUrl,
+          author: author,
+        ),
+      ),
+    );
   }
 }

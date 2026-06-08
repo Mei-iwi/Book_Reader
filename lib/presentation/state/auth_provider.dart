@@ -112,6 +112,20 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         confirmPassword: confirmPassword,
       );
+      if (currentUser != null &&
+          avatarUrl != null &&
+          avatarUrl.trim().isNotEmpty &&
+          currentUser!.avatarUrl != avatarUrl) {
+        currentUser = UserModel(
+          userId: currentUser!.userId,
+          fullName: currentUser!.fullName,
+          email: currentUser!.email,
+          phoneNumber: currentUser!.phoneNumber,
+          avatarUrl: avatarUrl,
+          role: currentUser!.role,
+          token: currentUser!.token,
+        );
+      }
       await _sessionStorage.saveUser(currentUser!);
       _authRepository.setToken(currentUser!.token);
       return true;

@@ -6,11 +6,13 @@ import 'package:flutter/foundation.dart';
 
 class HomeBookProvider extends ChangeNotifier {
   final BookRepository _bookRepository;
+  static const Duration _cacheDuration = Duration(minutes: 30);
 
   HomeBookProvider(this._bookRepository);
 
   bool isLoading = false;
   bool _homeLoaded = false;
+  DateTime? _lastHomeLoadAt;
   String? errMessage;
 
   List<Book> continueBooks = [];
@@ -21,7 +23,11 @@ class HomeBookProvider extends ChangeNotifier {
   String activeSearchKeyword = '';
 
   Future<void> loadHomeData({bool forceRefresh = false}) async {
-    if (_homeLoaded && !forceRefresh) {
+    final cacheStillFresh =
+        _lastHomeLoadAt != null &&
+        DateTime.now().difference(_lastHomeLoadAt!) < _cacheDuration;
+
+    if (_homeLoaded && cacheStillFresh && !forceRefresh) {
       debugPrint('Home data already loaded. Skip API call.');
       return;
     }
@@ -47,6 +53,7 @@ class HomeBookProvider extends ChangeNotifier {
       activeSearchKeyword = '';
 
       _homeLoaded = true;
+      _lastHomeLoadAt = DateTime.now();
       isLoading = false;
       notifyListeners();
 
@@ -163,6 +170,7 @@ class HomeBookProvider extends ChangeNotifier {
 
   void resetHomeData() {
     _homeLoaded = false;
+    _lastHomeLoadAt = null;
     continueBooks.clear();
     libraryBooks.clear();
     recommendationBooks.clear();
@@ -239,5 +247,16 @@ class HomeBookProvider extends ChangeNotifier {
   void refreshLibraryPreview(List<Book> books) {
     libraryBooks = books.take(6).toList();
     notifyListeners();
+  }
+
+  Future<void> refreshLocalData() async {
+    try {
+      final savedBooks = await _bookRepository.getOfflineBooks();
+      continueBooks = await _loadContinueBooks(savedBooks);
+      libraryBooks = savedBooks.take(6).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('REFRESH HOME LOCAL DATA ERROR: $e');
+    }
   }
 }

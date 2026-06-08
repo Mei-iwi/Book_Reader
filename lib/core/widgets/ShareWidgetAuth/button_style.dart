@@ -14,19 +14,24 @@ TextStyle stylebutton({
 }
 
 Widget button({required String text, required VoidCallback func}) {
-  return ElevatedButton(
-    onPressed: func,
-    style: ElevatedButton.styleFrom(
-      minimumSize: Size(300, 55),
-      backgroundColor: Colors.white,
-      side: BorderSide(color: Colors.blue, width: 1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-    ),
+  return Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      return ElevatedButton(
+        onPressed: func,
+        style: ElevatedButton.styleFrom(
+          minimumSize: Size(300, 55),
+          backgroundColor: theme.colorScheme.surface,
+          side: BorderSide(color: Colors.blue, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
 
-    child: Text(
-      text,
-      style: stylebutton(size: 20, fontWeight: true, color: Colors.blue),
-    ),
+        child: Text(
+          text,
+          style: stylebutton(size: 20, fontWeight: true, color: Colors.blue),
+        ),
+      );
+    },
   );
 }
 

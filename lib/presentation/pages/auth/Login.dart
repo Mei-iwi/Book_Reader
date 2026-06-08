@@ -37,9 +37,10 @@ class _Login extends State<Login> {
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AuthProvider>().isLoading;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           myBanner(urlBanner: Myimages.myBanner, text: Mytext.chooseLogin),
@@ -62,13 +63,16 @@ class _Login extends State<Login> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.only(bottom: 30),
         child: BottomAppBar(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           height: 100,
           child: Column(
             children: [
               Text(
                 isLoading ? "Signing in..." : "or Sign up with",
-                style: TextStyle(color: Colors.grey, fontSize: 15),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 15,
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

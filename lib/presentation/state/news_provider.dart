@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:book_reader/data/datasources/local/dao/news_like_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/models/news_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -14,12 +16,15 @@ class NewsProvider extends ChangeNotifier {
 
   List<NewsModel> _allNews = [];
   List<NewsModel> displayNews = [];
+  final NewsLikeDao _newsLikeDao = NewsLikeDao(AppDatabase.instance);
+  Set<String> likedNewsIds = {};
 
   Future<void> fetchNews() async {
     try {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
+      likedNewsIds = await _newsLikeDao.getLikedIds();
       final uri = Uri.parse('$_baseUrl$_endpoint?per_page=15');
       final res = await http.get(uri);
       if (res.statusCode == 200) {
@@ -47,6 +52,19 @@ class NewsProvider extends ChangeNotifier {
         return news.title.toLowerCase().contains(query) ||
             news.description.toLowerCase().contains(query);
       }).toList();
+    }
+    notifyListeners();
+  }
+
+  bool isLiked(String newsId) => likedNewsIds.contains(newsId);
+
+  Future<void> toggleLike(NewsModel news) async {
+    if (likedNewsIds.contains(news.id)) {
+      await _newsLikeDao.unlike(news.id);
+      likedNewsIds.remove(news.id);
+    } else {
+      await _newsLikeDao.like(news);
+      likedNewsIds.add(news.id);
     }
     notifyListeners();
   }

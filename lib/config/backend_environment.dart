@@ -2,7 +2,7 @@ enum BackendRunTarget { emulator, physicalUsb, physicalLan }
 
 class BackendEnvironment {
   // Doi dong nay khi muon chay nhanh giua may ao va may that.
-  static const BackendRunTarget activeTarget = BackendRunTarget.physicalUsb;
+  static const BackendRunTarget activeTarget = BackendRunTarget.emulator;
 
   static const String scheme = 'http';
   static const int port = 5102;
