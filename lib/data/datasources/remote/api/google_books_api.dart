@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:book_reader/config/env.dart';
 import 'package:book_reader/core/constants/api_constants.dart';
 import 'package:book_reader/core/services/http/api_client.dart';
 import 'package:book_reader/data/models/book_model.dart';
@@ -9,6 +10,7 @@ class GoogleBooksApi {
   final ApiClient _apiClient;
   static const String _googleBooksApiKey = String.fromEnvironment(
     'GOOGLE_BOOKS_API_KEY',
+    defaultValue: Env.googleBooksApiKey,
   );
 
   GoogleBooksApi(this._apiClient);

@@ -79,8 +79,13 @@ class BookModel extends Book {
           <String>[];
     }
 
+    final googleBookId = json['googleBookId']?.toString() ?? '';
+    final backendId = json['id']?.toString() ?? '';
+    final hasBackendId = backendId.trim().isNotEmpty && backendId.trim() != '0';
+    final source = json['source']?.toString() ?? 'backend';
+
     return BookModel(
-      id: json['id']?.toString() ?? json['googleBookId']?.toString() ?? '',
+      id: hasBackendId ? backendId : googleBookId,
       title: json['title']?.toString() ?? 'No title',
       authors: readStringList(json['authors']),
       description: json['description']?.toString() ?? '',
@@ -90,7 +95,7 @@ class BookModel extends Book {
       language: json['language']?.toString() ?? '',
       previewLink: json['previewLink']?.toString() ?? '',
       webReaderLink: json['webReaderLink']?.toString() ?? '',
-      source: json['source']?.toString() ?? 'backend',
+      source: source,
       pdfDownloadLink: json['pdfDownloadLink']?.toString() ?? '',
       epubDownloadLink: json['epubDownloadLink']?.toString() ?? '',
       localFilePath: json['localFilePath']?.toString() ?? '',
@@ -209,6 +214,9 @@ class BookModel extends Book {
     if (uri == null) return '';
 
     if (uri.host == 'example.com') return '';
+    if (uri.scheme == 'http') {
+      return uri.replace(scheme: 'https').toString();
+    }
 
     return text;
   }

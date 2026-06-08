@@ -55,3 +55,8 @@ app.*.map.json
 
 # Local app config with API keys
 lib/config/env.dart
+
+# Firebase local config with project/API keys
+android/app/google-services.json
+firebase_env.json
+firebase_env.*.json

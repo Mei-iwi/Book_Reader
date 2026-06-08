@@ -21,6 +21,10 @@ class AuthProvider extends ChangeNotifier {
     );
   }
 
+  Future<bool> loginWithGoogle() async {
+    return _runAuth(() => _authRepository.signInWithGoogle());
+  }
+
   Future<bool> register({
     required String fullName,
     required String email,
@@ -80,6 +84,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     await _sessionStorage.clear();
+    await _authRepository.signOut();
     _authRepository.setToken(null);
     currentUser = null;
     _sessionChecked = true;

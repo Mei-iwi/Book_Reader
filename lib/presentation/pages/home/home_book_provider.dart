@@ -32,26 +32,13 @@ class HomeBookProvider extends ChangeNotifier {
       notifyListeners();
 
       final savedBooks = await _bookRepository.getOfflineBooks();
+      final backendBooks = await _loadBackendBooks();
       final continueReadingBooks = await _loadContinueBooks(savedBooks);
-      final freeFiction = await _loadRecommendationSection(
-        freeQuery: 'public domain fiction',
-        paidQuery: 'fiction bestseller',
-      );
-      final freeTechnology = await _loadRecommendationSection(
-        freeQuery: 'free computer programming',
-        paidQuery: 'computer programming',
-      );
-      final freeScience = await _loadRecommendationSection(
-        freeQuery: 'public domain science',
-        paidQuery: 'science books',
-      );
 
       continueBooks = continueReadingBooks;
       libraryBooks = savedBooks.take(6).toList();
       recommendationSections = {
-        'Free Fiction': freeFiction.take(5).toList(),
-        'Free Technology': freeTechnology.take(5).toList(),
-        'Free Science': freeScience.take(5).toList(),
+        'Backend Books': backendBooks.take(10).toList(),
       };
       recommendationBooks = recommendationSections.values
           .expand((books) => books)
@@ -60,6 +47,33 @@ class HomeBookProvider extends ChangeNotifier {
       activeSearchKeyword = '';
 
       _homeLoaded = true;
+      isLoading = false;
+      notifyListeners();
+
+      final recommendationResults = await Future.wait([
+        _loadRecommendationSection(
+          freeQuery: 'public domain fiction',
+          paidQuery: 'fiction bestseller',
+        ),
+        _loadRecommendationSection(
+          freeQuery: 'free computer programming',
+          paidQuery: 'computer programming',
+        ),
+        _loadRecommendationSection(
+          freeQuery: 'public domain science',
+          paidQuery: 'science books',
+        ),
+      ]);
+
+      recommendationSections = {
+        'Backend Books': backendBooks.take(10).toList(),
+        'Free Fiction': recommendationResults[0].take(5).toList(),
+        'Free Technology': recommendationResults[1].take(5).toList(),
+        'Free Science': recommendationResults[2].take(5).toList(),
+      };
+      recommendationBooks = recommendationSections.values
+          .expand((books) => books)
+          .toList();
 
       debugPrint('===== LOAD HOME DATA SUCCESS =====');
       debugPrint('Google recommendation books: ${recommendationBooks.length}');
@@ -76,6 +90,15 @@ class HomeBookProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<List<Book>> _loadBackendBooks() async {
+    try {
+      return await _bookRepository.getBackendBooks(pageSize: 10);
+    } catch (e) {
+      debugPrint('LOAD BACKEND BOOKS ERROR: $e');
+      return [];
     }
   }
 
