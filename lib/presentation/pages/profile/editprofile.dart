@@ -93,7 +93,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         if (!success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(authProvider.errorMessage ?? 'Cap nhat that bai'),
+              content: Text(authProvider.errorMessage ?? 'Cập nhật thất bại'),
               backgroundColor: Colors.red,
             ),
           );
@@ -123,11 +123,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     // Tự động ẩn bàn phím khi chạm ra ngoài vùng textfield
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: SingleChildScrollView(
           child: Column(
             children: [
@@ -337,7 +338,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (path == null || path.trim().isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chua chon anh avatar.')),
+        const SnackBar(content: Text('Chưa chọn ảnh avatar.')),
       );
       return;
     }
@@ -348,7 +349,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Da chon avatar: ${result!.files.single.name}')),
+      SnackBar(content: Text('Đã chọn avatar: ${result!.files.single.name}')),
     );
   }
 
@@ -377,13 +378,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
     String? Function(String?)? validator,
     String? hintText,
   }) {
+    final theme = Theme.of(context);
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Colors.black87, fontSize: 15),
+      style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
       decoration: InputDecoration(
+        filled: true,
+        fillColor: theme.colorScheme.surface,
         // Căn lề chữ bên trong ô
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -397,8 +401,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.black87,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                   fontSize: 15,
                 ),
@@ -408,13 +412,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        hintStyle: TextStyle(
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          fontSize: 14,
+        ),
         // Icon con mắt cho password
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
                   obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.grey.shade600,
+                  color: theme.colorScheme.onSurfaceVariant,
                   size: 20,
                 ),
                 onPressed: onToggleVisibility,

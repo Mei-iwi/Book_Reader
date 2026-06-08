@@ -7,9 +7,11 @@ Widget bookReading({
   required double percent,
   VoidCallback? onTap,
   VoidCallback? onDelete,
+  Widget? action,
 }) {
   return Builder(
     builder: (context) {
+      final theme = Theme.of(context);
       return Padding(
         padding: const EdgeInsets.all(8.0),
         child: InkWell(
@@ -18,7 +20,7 @@ Widget bookReading({
             width: MediaQuery.of(context).size.width,
             padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.cardColor,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
@@ -53,17 +55,22 @@ Widget bookReading({
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       SizedBox(height: 20),
                       percentBook(percent, context),
+                      if (action != null) ...[
+                        SizedBox(height: 12),
+                        action,
+                      ],
                     ],
                   ),
                 ),
                 if (onDelete != null) ...[
                   SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'Xoa tien do doc',
+                    tooltip: 'Xóa tiến độ đọc',
                     onPressed: onDelete,
                     icon: Icon(Icons.delete_outline, color: Colors.red),
                   ),
@@ -120,7 +127,9 @@ Widget percentBook(double percent, BuildContext context) {
             child: Center(
               child: Text(
                 "${safePercent.toStringAsFixed(0)}% Completed",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ),

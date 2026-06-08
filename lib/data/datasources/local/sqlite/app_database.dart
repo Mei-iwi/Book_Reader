@@ -18,7 +18,7 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     final path = join(databasePath, 'book_reader.db');
 
-    return openDatabase(path, version: 1, onCreate: _onCreate);
+    return openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -50,7 +50,10 @@ class AppDatabase {
     CREATE TABLE reading_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id TEXT NOT NULL,
+      book_title TEXT,
+      cover_url TEXT,
       current_page INTEGER DEFAULT 0,
+      total_page INTEGER DEFAULT 1,
       progress_percent REAL DEFAULT 0,
       updated_at TEXT,
       FOREIGN KEY(book_id) REFERENCES offline_books(id)
@@ -98,5 +101,58 @@ class AppDatabase {
       created_at TEXT NOT NULL
     )
   ''');
+
+    await _createV2Tables(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 3) {
+      await _createV2Tables(db);
+    }
+  }
+
+  Future<void> _createV2Tables(Database db) async {
+    await db.execute('''
+    CREATE TABLE IF NOT EXISTS news_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      news_id TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL,
+      image_url TEXT,
+      liked_at TEXT NOT NULL
+    )
+  ''');
+
+    await db.execute('''
+    CREATE TABLE IF NOT EXISTS book_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id TEXT NOT NULL UNIQUE,
+      book_title TEXT,
+      cover_url TEXT,
+      rating REAL NOT NULL,
+      content TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  ''');
+
+    await _ensureColumn(db, 'reading_progress', 'book_title', 'TEXT');
+    await _ensureColumn(db, 'reading_progress', 'cover_url', 'TEXT');
+    await _ensureColumn(db, 'reading_progress', 'total_page', 'INTEGER DEFAULT 1');
+    await _ensureColumn(db, 'book_reviews', 'book_title', 'TEXT');
+    await _ensureColumn(db, 'book_reviews', 'cover_url', 'TEXT');
+  }
+
+  Future<void> _ensureColumn(
+    Database db,
+    String table,
+    String column,
+    String definition,
+  ) async {
+    final columns = await db.rawQuery('PRAGMA table_info($table)');
+    final exists = columns.any((row) => row['name'] == column);
+    if (!exists) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
+    }
   }
 }

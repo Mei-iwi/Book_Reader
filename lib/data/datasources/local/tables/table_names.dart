@@ -5,4 +5,6 @@ class TableNames {
   static const String comments = 'comments';
   static const String userProfile = 'user_profile';
   static const String favorites = 'favorites';
+  static const String newsLikes = 'news_likes';
+  static const String bookReviews = 'book_reviews';
 }

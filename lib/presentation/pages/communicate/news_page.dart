@@ -1,8 +1,8 @@
+import 'package:book_reader/data/models/news_model.dart';
+import 'package:book_reader/presentation/pages/communicate/in_app_web_page.dart';
 import 'package:book_reader/presentation/state/news_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:book_reader/data/models/news_model.dart';
 
 class NewsPage extends StatefulWidget {
   const NewsPage({super.key});
@@ -17,28 +17,33 @@ class _NewsPageState extends State<NewsPage> {
   @override
   void initState() {
     super.initState();
-    // Gọi API lấy danh sách bài viết ngay khi mở trang
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NewsProvider>().fetchNews();
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _onSearchChanged(String keyword) {
-    // Gọi hàm search để lọc danh sách bài báo
     context.read<NewsProvider>().searchNews(keyword);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'News',
           style: TextStyle(
-            color: Colors.black,
+            color: theme.colorScheme.onSurface,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -47,24 +52,23 @@ class _NewsPageState extends State<NewsPage> {
       ),
       body: Column(
         children: [
-          // Thanh tìm kiếm
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
+                style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: 'Search news...',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -75,8 +79,6 @@ class _NewsPageState extends State<NewsPage> {
               ),
             ),
           ),
-
-          // Danh sách bài viết
           Expanded(
             child: Consumer<NewsProvider>(
               builder: (context, provider, child) {
@@ -97,7 +99,9 @@ class _NewsPageState extends State<NewsPage> {
                   return Center(
                     child: Text(
                       'Không tìm thấy bài viết nào.',
-                      style: TextStyle(color: Colors.grey.shade500),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   );
                 }
@@ -105,12 +109,12 @@ class _NewsPageState extends State<NewsPage> {
                 return ListView.builder(
                   itemCount: provider.displayNews.length,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
+                    horizontal: 16,
+                    vertical: 8,
                   ),
                   itemBuilder: (context, index) {
                     final news = provider.displayNews[index];
-                    return _buildNewsCard(news);
+                    return _buildNewsCard(context, news);
                   },
                 );
               },
@@ -121,25 +125,15 @@ class _NewsPageState extends State<NewsPage> {
     );
   }
 
-  Widget _buildNewsCard(NewsModel news) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: GestureDetector(
-        onTap: () async {
-          final uri = Uri.parse(news.link);
-          final messenger = ScaffoldMessenger.of(context);
-          // Hàm mở bài viết LitHub bằng trình duyệt bên ngoài hoặc WebView
-          final canLaunch = await canLaunchUrl(uri);
-          if (!context.mounted) return;
+  Widget _buildNewsCard(BuildContext context, NewsModel news) {
+    final theme = Theme.of(context);
+    final isLiked = context.watch<NewsProvider>().isLiked(news.id);
 
-          if (canLaunch) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          } else {
-            messenger.showSnackBar(
-              const SnackBar(content: Text('Không thể mở bài viết này')),
-            );
-          }
-        },
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openNews(context, news),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -147,7 +141,7 @@ class _NewsPageState extends State<NewsPage> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: news.imageUrl.isNotEmpty
@@ -158,18 +152,16 @@ class _NewsPageState extends State<NewsPage> {
                   : Icon(Icons.category, color: Colors.grey.shade400, size: 30),
             ),
             const SizedBox(width: 16),
-
-            // Nội dung Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     news.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: theme.colorScheme.onSurface,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -179,7 +171,7 @@ class _NewsPageState extends State<NewsPage> {
                     news.description,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: theme.colorScheme.onSurfaceVariant,
                       height: 1.3,
                     ),
                     maxLines: 3,
@@ -188,8 +180,32 @@ class _NewsPageState extends State<NewsPage> {
                 ],
               ),
             ),
+            IconButton(
+              tooltip: isLiked ? 'Bỏ thích bài viết' : 'Thích bài viết',
+              onPressed: () => context.read<NewsProvider>().toggleLike(news),
+              icon: Icon(
+                isLiked ? Icons.favorite : Icons.favorite_border,
+                color: isLiked ? Colors.red : Colors.grey,
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openNews(BuildContext context, NewsModel news) {
+    if (news.link.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể mở bài viết này')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InAppWebPage(title: news.title, url: news.link),
       ),
     );
   }

@@ -21,6 +21,7 @@ import 'package:book_reader/presentation/state/book_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:book_reader/presentation/state/membership_provider.dart';
 import 'package:book_reader/presentation/state/news_provider.dart';
+import 'package:book_reader/presentation/state/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -68,6 +69,7 @@ void main() {
         ChangeNotifierProvider(
           create: (_) => MembershipProvider(membershipApi),
         ),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const Application(),
     ),

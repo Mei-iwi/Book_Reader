@@ -32,20 +32,7 @@ class LibraryProvider extends ChangeNotifier {
         remoteBooks = [];
       }
 
-      final localBooks = await _bookRepository.getOfflineBooks();
-      downloadedBooks = localBooks
-          .where(
-            (book) => book.isDownloaded || book.localFilePath.trim().isNotEmpty,
-          )
-          .toList();
-      final merged = <String, Book>{};
-      for (final book in remoteBooks) {
-        merged[book.id] = book;
-      }
-      for (final book in localBooks) {
-        merged[book.id] = book;
-      }
-      offlineBooks = merged.values.toList();
+      await refreshLocalBooks(notify: false);
 
       debugPrint('===== LIBRARY PROVIDER =====');
       debugPrint('Số sách đã lưu: ${offlineBooks.length}');
@@ -62,6 +49,26 @@ class LibraryProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> refreshLocalBooks({bool notify = true}) async {
+    final localBooks = await _bookRepository.getOfflineBooks();
+    downloadedBooks = localBooks
+        .where(
+          (book) => book.isDownloaded || book.localFilePath.trim().isNotEmpty,
+        )
+        .toList();
+
+    final merged = <String, Book>{};
+    for (final book in remoteBooks) {
+      merged[book.id] = book;
+    }
+    for (final book in localBooks) {
+      merged[book.id] = book;
+    }
+    offlineBooks = merged.values.toList();
+
+    if (notify) notifyListeners();
   }
 
   Future<void> deleteOfflineBook(Book book, {int? userId}) async {
@@ -101,7 +108,7 @@ class LibraryProvider extends ChangeNotifier {
 
       remoteBooks = await _libraryApi.getLibrary(userId: userId);
     } catch (e) {
-      errMessage = 'Khong the tai thu vien online: $e';
+      errMessage = 'Không thể tải thư viện online: $e';
     } finally {
       isLoading = false;
       notifyListeners();

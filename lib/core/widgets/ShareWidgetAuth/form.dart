@@ -24,6 +24,7 @@ class _FormInput extends State<FormInput> {
   bool _isHide = true;
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: EdgeInsets.all(0),
       child: Row(
@@ -34,6 +35,7 @@ class _FormInput extends State<FormInput> {
             child: TextFormField(
               controller: widget.controller,
               validator: widget.validator,
+              style: TextStyle(color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
                 prefixIcon: Icon(widget.icon, color: Colors.blue),
                 enabledBorder: UnderlineInputBorder(
@@ -42,7 +44,10 @@ class _FormInput extends State<FormInput> {
                 focusedBorder: UnderlineInputBorder(
                   borderSide: BorderSide(color: Colors.blue),
                 ),
-                label: Text(widget.text),
+                label: Text(
+                  widget.text,
+                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                ),
 
                 suffixIcon: (widget.isPassword
                     ? IconButton(
@@ -50,8 +55,14 @@ class _FormInput extends State<FormInput> {
                           _isHide = !_isHide;
                         }),
                         icon: (_isHide
-                            ? Icon(Icons.remove_red_eye)
-                            : Icon(Icons.visibility_off)),
+                            ? Icon(
+                                Icons.remove_red_eye,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              )
+                            : Icon(
+                                Icons.visibility_off,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              )),
                       )
                     : null),
               ),

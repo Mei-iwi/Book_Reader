@@ -19,37 +19,29 @@ class FormSearch extends StatefulWidget {
 class _FormSearch extends State<FormSearch> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.6,
-            height: 40,
-            child: TextFormField(
-              controller: widget.controller,
-              textInputAction: TextInputAction.search,
-              onFieldSubmitted: (_) => widget.func(),
-              decoration: InputDecoration(
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(1000),
-                  borderSide: BorderSide(color: Colors.grey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(1000),
-
-                  borderSide: BorderSide(color: Colors.grey),
-                ),
-                label: Text(widget.text),
-                suffixIcon: IconButton(
-                  onPressed: widget.func,
-                  icon: Icon(Icons.search, color: Colors.blue),
-                ),
-              ),
-            ),
+    return SizedBox(
+      height: 42,
+      child: TextFormField(
+        controller: widget.controller,
+        textInputAction: TextInputAction.search,
+        onFieldSubmitted: (_) => widget.func(),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(1000),
+            borderSide: BorderSide(color: Colors.grey.shade500),
           ),
-        ],
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(1000),
+            borderSide: const BorderSide(color: Colors.blue),
+          ),
+          hintText: widget.text,
+          suffixIcon: IconButton(
+            onPressed: widget.func,
+            icon: const Icon(Icons.search, color: Colors.blue),
+          ),
+        ),
       ),
     );
   }

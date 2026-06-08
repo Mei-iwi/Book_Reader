@@ -9,6 +9,8 @@ import 'package:book_reader/presentation/pages/profile/myprofile.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/theme_provider.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +31,7 @@ class _Home extends State<Home> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeBookProvider>().loadHomeData(forceRefresh: true);
+      context.read<HomeBookProvider>().loadHomeData();
     });
   }
 
@@ -42,8 +44,11 @@ class _Home extends State<Home> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HomeBookProvider>();
+    final user = context.watch<AuthProvider>().currentUser;
+    final themeProvider = context.watch<ThemeProvider>();
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: FormSearch(
           text: 'Search',
           controller: search,
@@ -53,6 +58,16 @@ class _Home extends State<Home> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            tooltip: themeProvider.isDarkMode
+                ? 'Chuyển sang giao diện sáng'
+                : 'Chuyển sang giao diện tối',
+            onPressed: themeProvider.toggleTheme,
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+          ),
           InkWell(
             onTap: () {
               Navigator.push(
@@ -61,7 +76,8 @@ class _Home extends State<Home> {
               );
             },
             child: CircleAvatar(
-              backgroundImage: AssetImage(Templateimage.avatar),
+              radius: 18,
+              backgroundImage: _homeAvatarImage(user?.avatarUrl ?? ''),
             ),
           ),
           SizedBox(width: 10),
@@ -161,6 +177,17 @@ class _Home extends State<Home> {
   }
 }
 
+ImageProvider _homeAvatarImage(String avatarPath) {
+  final value = avatarPath.trim();
+  if (value.isNotEmpty && File(value).existsSync()) {
+    return FileImage(File(value));
+  }
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return NetworkImage(value);
+  }
+  return AssetImage(Templateimage.avatar);
+}
+
 Widget _buildBody(HomeBookProvider provider) {
   if (provider.isLoading) {
     return const Center(child: CircularProgressIndicator());
@@ -194,7 +221,7 @@ Widget _buildBody(HomeBookProvider provider) {
           _buiderBookSection(
             title: 'Continue...',
             books: provider.continueBooks,
-            emptyMessage: 'Chua co sach dang doc tiep.',
+            emptyMessage: 'Chưa có sách đang đọc tiếp.',
             openFromProgress: true,
           ),
           _buiderBookSection(
@@ -209,8 +236,8 @@ Widget _buildBody(HomeBookProvider provider) {
                   : 'Recommendations - ${entry.key}',
               books: entry.value,
               emptyMessage: entry.key == 'Backend Books'
-                  ? 'Khong tai duoc sach tu backend.'
-                  : 'Khong tai duoc sach mien phi tu Google Books cho muc nay.',
+                  ? 'Không tải được sách từ backend.'
+                  : 'Không tải được sách miễn phí từ Google Books cho mục này.',
             ),
         ],
       ],
@@ -222,7 +249,7 @@ Widget _buiderBookSection({
   required String title,
   required List<Book> books,
   String emptyMessage =
-      'Khong tim thay sach hoac Google Books dang gioi han truy cap.',
+      'Không tìm thấy sách hoặc Google Books đang giới hạn truy cập.',
   bool openFromProgress = false,
 }) {
   return Column(
@@ -309,13 +336,14 @@ Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
 
   if (!context.mounted) return;
 
-  Navigator.push(
+  await Navigator.push(
     context,
     MaterialPageRoute(
       builder: (_) => Reader(
         value: currentPage <= 0 ? 1 : currentPage,
         total: book.pageCount > 0 ? book.pageCount : 1,
         title: book.title,
+        coverUrl: book.thumbnailUrl,
         bookId: book.id,
         userId: context.read<AuthProvider>().currentUser?.userId,
         localFilePath: book.localFilePath,
@@ -326,6 +354,9 @@ Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
       ),
     ),
   );
+
+  if (!context.mounted) return;
+  await context.read<HomeBookProvider>().refreshLocalData();
 }
 
 TextStyle style() {

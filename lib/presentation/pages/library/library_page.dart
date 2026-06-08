@@ -1,10 +1,16 @@
+import 'dart:io';
+
 import 'package:book_reader/core/constants/templateImage.dart';
+import 'package:book_reader/data/datasources/local/dao/book_review_dao.dart';
+import 'package:book_reader/data/datasources/local/dao/news_like_dao.dart';
+import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
+import 'package:book_reader/presentation/pages/communicate/in_app_web_page.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
+import 'package:book_reader/presentation/pages/review/reviewed_books_page.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +29,6 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId = context.read<AuthProvider>().currentUser?.userId;
       context.read<LibraryProvider>().loadOfflineBooks(userId: userId);
@@ -36,19 +41,26 @@ class _LibraryPageState extends State<LibraryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Download',
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Thư viện'),
         actions: [
           IconButton(
             icon: Icon(_showGrid ? Icons.view_list : Icons.grid_view),
-            tooltip: _showGrid ? 'Xem dang danh sach' : 'Xem dang luoi',
+            tooltip: _showGrid ? 'Xem dạng danh sách' : 'Xem dạng lưới',
             onPressed: () => setState(() => _showGrid = !_showGrid),
           ),
           IconButton(
+            icon: const Icon(Icons.star),
+            tooltip: 'Sách đã đánh giá',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReviewedBooksPage()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.file_upload),
-            tooltip: 'Import Book',
+            tooltip: 'Import sách',
             onPressed: () => _importBook(context, provider),
           ),
         ],
@@ -61,18 +73,8 @@ class _LibraryPageState extends State<LibraryPage> {
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (provider.errMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(provider.errMessage!, textAlign: TextAlign.center),
-        ),
-      );
-    }
-
-    if (provider.offlineBooks.isEmpty) {
-      return const Center(child: Text('Chưa có sách đã lưu.'));
+      return Center(child: Text(provider.errMessage!, textAlign: TextAlign.center));
     }
 
     final userId = context.read<AuthProvider>().currentUser?.userId;
@@ -84,10 +86,19 @@ class _LibraryPageState extends State<LibraryPage> {
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _buildFilters(categories)),
-          if (books.isEmpty)
+          if (_selectedCategory == 'liked_news')
+            SliverToBoxAdapter(child: _buildLikedNews())
+          else if (_selectedCategory == 'reviews')
+            SliverToBoxAdapter(child: _buildReviewedBooks())
+          else if (provider.offlineBooks.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(child: Text('Khong co sach trong muc nay.')),
+              child: Center(child: Text('Chưa có sách đã lưu.')),
+            )
+          else if (books.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text('Không có sách trong mục này.')),
             )
           else if (_showGrid)
             SliverPadding(
@@ -100,8 +111,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   mainAxisSpacing: 12,
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
-                  final book = books[index];
-                  return _LibraryBookGridItem(book: book);
+                  return _LibraryBookGridItem(book: books[index]);
                 }, childCount: books.length),
               ),
             )
@@ -111,8 +121,7 @@ class _LibraryPageState extends State<LibraryPage> {
               sliver: SliverList.builder(
                 itemCount: books.length,
                 itemBuilder: (context, index) {
-                  final book = books[index];
-                  return _LibraryBookItem(book: book, provider: provider);
+                  return _LibraryBookItem(book: books[index], provider: provider);
                 },
               ),
             ),
@@ -133,12 +142,12 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   List<Book> _filteredBooks(LibraryProvider provider) {
-    final books = provider.offlineBooks;
-    if (_selectedCategory == 'downloaded') {
-      return provider.downloadedBooks;
+    if (_selectedCategory == 'downloaded') return provider.downloadedBooks;
+    if (_selectedCategory == 'all') return provider.offlineBooks;
+    if (_selectedCategory == 'reviews' || _selectedCategory == 'liked_news') {
+      return const [];
     }
-    if (_selectedCategory == 'all') return books;
-    return books
+    return provider.offlineBooks
         .where((book) => book.categories.contains(_selectedCategory))
         .toList();
   }
@@ -149,9 +158,13 @@ class _LibraryPageState extends State<LibraryPage> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
         children: [
-          _filterChip('all', 'Tat ca'),
+          _filterChip('all', 'Tất cả'),
           const SizedBox(width: 8),
           _filterChip('downloaded', 'Downloaded'),
+          const SizedBox(width: 8),
+          _filterChip('reviews', 'Đã đánh giá'),
+          const SizedBox(width: 8),
+          _filterChip('liked_news', 'Tin đã thích'),
           for (final category in categories) ...[
             const SizedBox(width: 8),
             _filterChip(category, category),
@@ -169,10 +182,121 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  Future<void> _importBook(
-    BuildContext context,
-    LibraryProvider provider,
-  ) async {
+  Widget _buildLikedNews() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: NewsLikeDao(AppDatabase.instance).getLikedNews(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final news = snapshot.data ?? [];
+        if (news.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: Text('Chưa có tin tức đã thích.')),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: news.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final item = news[index];
+            final title = item['title']?.toString() ?? 'Tin đã thích';
+            final url = item['url']?.toString() ?? '';
+            final imageUrl = item['image_url']?.toString() ?? '';
+
+            return ListTile(
+              leading: SizedBox(
+                width: 56,
+                height: 56,
+                child: imageUrl.isEmpty
+                    ? const Icon(Icons.article_outlined)
+                    : Image.network(
+                        imageUrl.replaceFirst('http://', 'https://'),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) {
+                          return const Icon(Icons.article_outlined);
+                        },
+                      ),
+              ),
+              title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: url.isEmpty
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => InAppWebPage(title: title, url: url),
+                        ),
+                      );
+                    },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildReviewedBooks() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: BookReviewDao(AppDatabase.instance).getAllReviews(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final reviews = snapshot.data ?? [];
+        if (reviews.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: Text('Chưa có sách đã đánh giá.')),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: reviews.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final review = reviews[index];
+            final title = review['display_title']?.toString().trim().isNotEmpty == true
+                ? review['display_title'].toString()
+                : 'Sách đã đánh giá';
+            final cover = review['display_cover']?.toString() ?? '';
+            final rating = (review['rating'] as num?)?.toDouble() ?? 0;
+            final content = review['content']?.toString() ?? '';
+
+            return ListTile(
+              leading: _BookCover(url: cover, width: 52, height: 74),
+              title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                '${rating.toStringAsFixed(1)} sao'
+                '${content.isEmpty ? '' : '\n$content'}',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _importBook(BuildContext context, LibraryProvider provider) async {
     try {
       final repo = context.read<BookRepository>();
       final userId = context.read<AuthProvider>().currentUser?.userId;
@@ -181,45 +305,41 @@ class _LibraryPageState extends State<LibraryPage> {
         allowedExtensions: ['pdf', 'epub', 'txt'],
       );
 
-      if (result != null && result.files.single.path != null) {
-        final filePath = result.files.single.path!;
-        final file = File(filePath);
-        final fileName = result.files.single.name;
+      final filePath = result?.files.single.path;
+      if (filePath == null || filePath.trim().isEmpty) return;
 
-        final newBook = Book(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: fileName,
-          authors: ['Local Import'],
-          description: 'Imported from device',
-          thumbnailUrl: '',
-          categories: ['Local'],
-          pageCount: 1,
-          language: 'vi',
-          previewLink: '',
-          webReaderLink: '',
-          pdfDownloadLink: '',
-          epubDownloadLink: '',
-          source: 'local_import',
-          localFilePath: file.path,
-          coverLocalPath: '',
-          isDownloaded: true,
-        );
+      final fileName = result!.files.single.name;
+      final newBook = Book(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: fileName,
+        authors: const ['Local Import'],
+        description: 'Imported from device',
+        thumbnailUrl: '',
+        categories: const ['Local'],
+        pageCount: 1,
+        language: 'vi',
+        previewLink: '',
+        webReaderLink: '',
+        pdfDownloadLink: '',
+        epubDownloadLink: '',
+        source: 'local_import',
+        localFilePath: File(filePath).path,
+        coverLocalPath: '',
+        isDownloaded: true,
+      );
 
-        await repo.saveBookOffline(newBook);
-        if (!mounted) return;
-        await provider.loadOfflineBooks(userId: userId);
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Import thành công!')));
-        }
-      }
+      await repo.saveBookOffline(newBook);
+      if (!mounted) return;
+      await provider.loadOfflineBooks(userId: userId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Import thành công!')));
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi khi import file: $e')));
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi khi import file: $e')));
     }
   }
 }
@@ -239,7 +359,7 @@ class _LibraryBookItem extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildCover(),
+            _BookCover(url: book.thumbnailUrl, width: 55, height: 80),
             const SizedBox(width: 12),
             Expanded(
               child: ListTile(
@@ -249,35 +369,30 @@ class _LibraryBookItem extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    book.authors.isNotEmpty
-                        ? book.authors.join(', ')
-                        : 'Unknown',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      book.authors.isNotEmpty ? book.authors.join(', ') : 'Unknown',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    _ReviewText(bookId: book.id),
+                  ],
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       tooltip: 'Đọc sách',
-                      icon: const Icon(
-                        Icons.menu_book_outlined,
-                        color: Colors.blue,
-                      ),
-                      onPressed: () {
-                        _openReader(context);
-                      },
+                      icon: const Icon(Icons.menu_book_outlined, color: Colors.blue),
+                      onPressed: () => _openReader(context),
                     ),
                     IconButton(
                       tooltip: 'Xóa sách',
                       icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () async {
-                        await _confirmDelete(context);
-                      },
+                      onPressed: () => _confirmDelete(context),
                     ),
                   ],
                 ),
@@ -289,37 +404,6 @@ class _LibraryBookItem extends StatelessWidget {
     );
   }
 
-  Widget _buildCover() {
-    return SizedBox(
-      width: 55,
-      height: 80,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: _coverImage(),
-      ),
-    );
-  }
-
-  Widget _coverImage() {
-    final thumbnail = book.thumbnailUrl.trim();
-
-    if (thumbnail.isNotEmpty) {
-      return Image.network(
-        thumbnail.replaceFirst('http://', 'https://'),
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _defaultCover();
-        },
-      );
-    }
-
-    return _defaultCover();
-  }
-
-  Widget _defaultCover() {
-    return Image.asset(Templateimage.book1, fit: BoxFit.cover);
-  }
-
   void _openReader(BuildContext context) {
     Navigator.push(
       context,
@@ -328,6 +412,7 @@ class _LibraryBookItem extends StatelessWidget {
           value: 1,
           total: book.pageCount > 0 ? book.pageCount : 1,
           title: book.title,
+          coverUrl: book.thumbnailUrl,
           bookId: book.id,
           userId: context.read<AuthProvider>().currentUser?.userId,
           localFilePath: book.localFilePath,
@@ -335,8 +420,6 @@ class _LibraryBookItem extends StatelessWidget {
           previewLink: book.previewLink,
           pdfDownloadLink: book.pdfDownloadLink,
           epubDownloadLink: book.epubDownloadLink,
-
-          // Fallback demo nếu sách chưa có file tải thật và cũng chưa có link đọc.
         ),
       ),
     );
@@ -365,11 +448,8 @@ class _LibraryBookItem extends StatelessWidget {
     );
 
     if (shouldDelete != true) return;
-
     await provider.deleteOfflineBook(book, userId: userId);
-
     if (!context.mounted) return;
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Đã xóa sách khỏi thư viện')));
@@ -394,6 +474,7 @@ class _LibraryBookGridItem extends StatelessWidget {
                 value: 1,
                 total: book.pageCount > 0 ? book.pageCount : 1,
                 title: book.title,
+                coverUrl: book.thumbnailUrl,
                 bookId: book.id,
                 userId: context.read<AuthProvider>().currentUser?.userId,
                 localFilePath: book.localFilePath,
@@ -410,7 +491,7 @@ class _LibraryBookGridItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _coverImage()),
+              Expanded(child: _BookCover(url: book.thumbnailUrl)),
               const SizedBox(height: 8),
               Text(
                 book.title,
@@ -425,32 +506,72 @@ class _LibraryBookGridItem extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
+              _ReviewText(bookId: book.id),
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _coverImage() {
-    final thumbnail = book.thumbnailUrl.trim();
-    if (thumbnail.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          thumbnail.replaceFirst('http://', 'https://'),
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _defaultCover(),
-        ),
-      );
-    }
-    return _defaultCover();
-  }
+class _BookCover extends StatelessWidget {
+  final String url;
+  final double? width;
+  final double? height;
 
-  Widget _defaultCover() {
+  const _BookCover({required this.url, this.width, this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    final cover = url.trim();
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.asset(Templateimage.book1, fit: BoxFit.cover),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: cover.isEmpty
+            ? Image.asset(Templateimage.book1, fit: BoxFit.cover)
+            : Image.network(
+                cover.replaceFirst('http://', 'https://'),
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) {
+                  return Image.asset(Templateimage.book1, fit: BoxFit.cover);
+                },
+              ),
+      ),
+    );
+  }
+}
+
+class _ReviewText extends StatelessWidget {
+  final String bookId;
+
+  const _ReviewText({required this.bookId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: BookReviewDao(AppDatabase.instance).getReview(bookId),
+      builder: (context, snapshot) {
+        final rating = (snapshot.data?['rating'] as num?)?.toDouble();
+        if (rating == null) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star, size: 14, color: Colors.amber),
+              const SizedBox(width: 4),
+              Text(
+                rating.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

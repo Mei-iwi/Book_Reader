@@ -9,7 +9,10 @@ class ReadingProgressDao {
   Future<void> saveProgress({
     required String bookId,
     required int currentPage,
+    required int totalPage,
     required double progressPercent,
+    String? bookTitle,
+    String? coverUrl,
   }) async {
     final db = await _appDatabase.database;
 
@@ -21,7 +24,10 @@ class ReadingProgressDao {
     );
     final data = {
       'book_id': bookId,
+      'book_title': bookTitle,
+      'cover_url': coverUrl,
       'current_page': currentPage,
+      'total_page': totalPage,
       'progress_percent': progressPercent,
       'updated_at': DateTime.now().toIso8601String(),
     };

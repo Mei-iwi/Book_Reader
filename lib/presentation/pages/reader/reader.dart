@@ -8,6 +8,8 @@ import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/data/datasources/remote/api/bookmark_api.dart';
 import 'package:book_reader/data/datasources/remote/api/reading_progress_api.dart';
 import 'package:book_reader/presentation/pages/comment/comments.dart';
+import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
+import 'package:book_reader/presentation/state/library_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -22,6 +25,7 @@ class Reader extends StatefulWidget {
   final int value;
   final int total;
   final String title;
+  final String coverUrl;
   final String? bookId;
   final int? userId;
 
@@ -49,6 +53,7 @@ class Reader extends StatefulWidget {
     required this.value,
     required this.total,
     required this.title,
+    this.coverUrl = '',
     this.bookId,
     this.userId,
     this.localFilePath,
@@ -68,6 +73,7 @@ class _Reader extends State<Reader> {
   late int newvalue = widget.value;
   late int _textPageCount = widget.total <= 0 ? 1 : widget.total;
   late Future<List<String>> _pagesFuture;
+  late final PageController _pageController;
   late final ReadingProgressDao _readingProgressDao;
   late final BookmarkDao _bookmarkDao;
   late final ReadingProgressApi _readingProgressApi;
@@ -79,6 +85,8 @@ class _Reader extends State<Reader> {
   bool _isOpeningRemoteFile = false;
   bool _autoOpenedRemoteFile = false;
   String? _webErrorMessage;
+  String _readingMode = 'light';
+  double _fontScale = 1;
 
   String get _onlineLink {
     final webReaderLink = widget.webReaderLink?.trim() ?? '';
@@ -96,6 +104,8 @@ class _Reader extends State<Reader> {
   String get _remoteEpubLink => widget.epubDownloadLink?.trim() ?? '';
   bool get _hasRemotePdf => _remotePdfLink.isNotEmpty;
   bool get _hasRemoteEpub => _remoteEpubLink.isNotEmpty;
+  bool get _usesExternalReader =>
+      _hasExternalLocalFile || _hasRemotePdf || _hasRemoteEpub;
 
   int get _currentTotalPage {
     if (_shouldUseWebView || _hasExternalLocalFile || _hasRemoteEpub) {
@@ -151,6 +161,7 @@ class _Reader extends State<Reader> {
 
     final appDatabase = AppDatabase.instance;
     final apiClient = ApiClient();
+    _pageController = PageController();
     _readingProgressDao = ReadingProgressDao(appDatabase);
     _bookmarkDao = BookmarkDao(appDatabase);
     _readingProgressApi = ReadingProgressApi(apiClient);
@@ -161,13 +172,20 @@ class _Reader extends State<Reader> {
       _initWebView();
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_shouldUseWebView || _hasExternalLocalFile || _hasRemoteEpub) {
-        _loadSavedProgress();
-        _saveProgress();
+        await _loadSavedProgress();
+        await _saveProgress();
       }
       _autoOpenRemoteFileIfNeeded();
     });
+  }
+
+  @override
+  void dispose() {
+    _saveProgress();
+    _pageController.dispose();
+    super.dispose();
   }
 
   void _autoOpenRemoteFileIfNeeded() {
@@ -271,6 +289,9 @@ class _Reader extends State<Reader> {
         _textPageCount = pages.length;
       });
       await _loadSavedProgress(totalPageOverride: pages.length);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _jumpToCurrentTextPage();
+      });
       await _saveProgress();
     }
 
@@ -348,11 +369,21 @@ class _Reader extends State<Reader> {
     final progress = await _readingProgressDao.getProgress(bookId);
     if (!mounted || progress == null) return;
 
-    final savedPage = progress['current_page'] as int? ?? widget.value;
+    final savedPage =
+        (progress['current_page'] as num?)?.toInt() ?? widget.value;
     final totalPage = totalPageOverride ?? _currentTotalPage;
     setState(() {
       newvalue = savedPage.clamp(1, totalPage).toInt();
     });
+    _jumpToCurrentTextPage();
+  }
+
+  void _jumpToCurrentTextPage() {
+    if (!_pageController.hasClients || _shouldUseWebView || _usesExternalReader) {
+      return;
+    }
+    final pageIndex = (newvalue - 1).clamp(0, _currentTotalPage - 1).toInt();
+    _pageController.jumpToPage(pageIndex);
   }
 
   Future<void> _saveProgress() async {
@@ -360,13 +391,20 @@ class _Reader extends State<Reader> {
     if (bookId == null || bookId.trim().isEmpty) return;
 
     final totalPage = _currentTotalPage;
-    final progressPercent = (newvalue / totalPage) * 100;
+    final progressPercent = ((newvalue / totalPage) * 100).clamp(0, 100).toDouble();
 
     await _readingProgressDao.saveProgress(
       bookId: bookId,
       currentPage: newvalue,
+      totalPage: totalPage,
       progressPercent: progressPercent,
+      bookTitle: widget.title,
+      coverUrl: widget.coverUrl,
     );
+
+    if (mounted) {
+      await _refreshReadingConsumers();
+    }
 
     final backendBookId = int.tryParse(bookId);
     final userId = widget.userId;
@@ -388,7 +426,11 @@ class _Reader extends State<Reader> {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
 
-    await _bookmarkDao.addBookmark(bookId: bookId, page: newvalue);
+    await _bookmarkDao.addBookmark(
+      bookId: bookId,
+      page: newvalue,
+      note: _bookmarkNote(),
+    );
 
     final backendBookId = int.tryParse(bookId);
     final userId = widget.userId;
@@ -409,9 +451,17 @@ class _Reader extends State<Reader> {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sach nay chua co ma sach de bookmark.')),
+        const SnackBar(content: Text('Sách này chưa có mã sách để bookmark.')),
       );
       return;
+    }
+
+    if (_shouldUseWebView || _usesExternalReader) {
+      final updated = await _showProgressDialog(
+        title: 'Chọn mốc bookmark',
+        saveText: 'Lưu mốc',
+      );
+      if (!updated) return;
     }
 
     await _saveBookmark();
@@ -420,7 +470,13 @@ class _Reader extends State<Reader> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Da luu bookmark trang $newvalue')));
+    ).showSnackBar(SnackBar(content: Text('Đã lưu bookmark trang $newvalue')));
+  }
+
+  String _bookmarkNote() {
+    if (!(_shouldUseWebView || _usesExternalReader)) return '';
+    final percent = ((newvalue / _currentTotalPage) * 100).clamp(0, 100);
+    return 'Mốc đọc ${percent.toStringAsFixed(0)}%';
   }
 
   Future<void> _showBookmarksDialog() async {
@@ -428,7 +484,7 @@ class _Reader extends State<Reader> {
     if (bookId == null || bookId.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sach nay chua co ma sach de luu bookmark.'),
+          content: Text('Sách này chưa có mã sách để lưu bookmark.'),
         ),
       );
       return;
@@ -443,7 +499,7 @@ class _Reader extends State<Reader> {
         if (bookmarks.isEmpty) {
           return AlertDialog(
             title: const Text('Bookmark'),
-            content: const Text('Chua co bookmark nao cho sach nay.'),
+            content: const Text('Chưa có bookmark nào cho sách này.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
@@ -467,10 +523,10 @@ class _Reader extends State<Reader> {
                 final note = bookmark['note']?.toString() ?? '';
 
                 return ListTile(
-                  title: Text('Trang $page'),
-                  subtitle: note.isEmpty ? null : Text(note),
+                  title: Text(note.isNotEmpty ? note : 'Trang $page'),
+                  subtitle: note.isEmpty ? null : Text('Trang tham chiếu $page'),
                   trailing: IconButton(
-                    tooltip: 'Xoa bookmark',
+                    tooltip: 'Xóa bookmark',
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () async {
                       await _bookmarkDao.deleteBookmark(id);
@@ -570,16 +626,29 @@ class _Reader extends State<Reader> {
 
   void _previousPage() {
     final totalPage = _currentTotalPage;
-    setState(() {
-      newvalue - 1 <= 0 ? newvalue = totalPage : newvalue -= 1;
-    });
-    _saveProgress();
+    final nextPage = newvalue - 1 <= 0 ? totalPage : newvalue - 1;
+    _goToTextPage(nextPage);
   }
 
   void _nextPage() {
     final totalPage = _currentTotalPage;
+    final nextPage = newvalue + 1 > totalPage ? 1 : newvalue + 1;
+    _goToTextPage(nextPage);
+  }
+
+  void _goToTextPage(int page) {
+    final targetPage = page.clamp(1, _currentTotalPage).toInt();
+    if (_pageController.hasClients && !_shouldUseWebView && !_usesExternalReader) {
+      _pageController.animateToPage(
+        targetPage - 1,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+
     setState(() {
-      newvalue + 1 > totalPage ? newvalue = 1 : newvalue += 1;
+      newvalue = targetPage;
     });
     _saveProgress();
   }
@@ -600,6 +669,130 @@ class _Reader extends State<Reader> {
     if (controller == null) return;
 
     await controller.reload();
+  }
+
+  Future<void> _refreshReadingConsumers() async {
+    if (!mounted) return;
+    try {
+      await context.read<HomeBookProvider>().refreshLocalData();
+    } catch (_) {}
+
+    if (!mounted) return;
+    try {
+      await context.read<LibraryProvider>().refreshLocalBooks();
+    } catch (_) {}
+  }
+
+  Future<bool> _showProgressDialog({
+    String title = 'Cập nhật tiến độ đọc',
+    String saveText = 'Lưu',
+  }) async {
+    final totalPage = _currentTotalPage;
+    var selectedPercent = ((newvalue / totalPage) * 100).clamp(0, 100).toDouble();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Cập nhật tiến độ đọc'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${selectedPercent.toStringAsFixed(0)}%'),
+                  Slider(
+                    value: selectedPercent,
+                    min: 0,
+                    max: 100,
+                    divisions: 20,
+                    label: '${selectedPercent.toStringAsFixed(0)}%',
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedPercent = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Hủy'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final page = ((selectedPercent / 100) * totalPage)
+                        .round()
+                        .clamp(1, totalPage)
+                        .toInt();
+                    setState(() {
+                      newvalue = page;
+                    });
+                    await _saveProgress();
+                    if (!dialogContext.mounted) return;
+                    Navigator.pop(dialogContext, true);
+                  },
+                  child: const Text('Lưu'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    return saved ?? false;
+  }
+
+  Future<void> _showReadingModeSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Chế độ đọc',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'light', label: Text('Sáng')),
+                      ButtonSegment(value: 'sepia', label: Text('Sepia')),
+                      ButtonSegment(value: 'dark', label: Text('Tối')),
+                    ],
+                    selected: {_readingMode},
+                    onSelectionChanged: (values) {
+                      final value = values.first;
+                      setSheetState(() => _readingMode = value);
+                      setState(() => _readingMode = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Cỡ chữ: ${(_fontScale * 100).toStringAsFixed(0)}%'),
+                  Slider(
+                    value: _fontScale,
+                    min: 0.8,
+                    max: 1.4,
+                    divisions: 6,
+                    onChanged: (value) {
+                      setSheetState(() => _fontScale = value);
+                      setState(() => _fontScale = value);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -630,6 +823,17 @@ class _Reader extends State<Reader> {
               onPressed: _reloadWebView,
               icon: const Icon(Icons.refresh, color: Colors.blue),
             ),
+          if (_shouldUseWebView || _usesExternalReader)
+            IconButton(
+              tooltip: 'Cập nhật tiến độ',
+              onPressed: _showProgressDialog,
+              icon: const Icon(Icons.percent, color: Colors.blue),
+            ),
+          IconButton(
+            tooltip: 'Chế độ đọc',
+            onPressed: _showReadingModeSheet,
+            icon: const Icon(Icons.tune, color: Colors.blue),
+          ),
           IconButton(
             tooltip: 'Bình luận',
             onPressed: () {
@@ -646,12 +850,12 @@ class _Reader extends State<Reader> {
             icon: const Icon(Icons.comment, color: Colors.blue),
           ),
           IconButton(
-            tooltip: 'Luu bookmark',
+            tooltip: 'Lưu bookmark',
             onPressed: _saveBookmarkFromToolbar,
             icon: const Icon(Icons.bookmark_add_outlined, color: Colors.blue),
           ),
           IconButton(
-            tooltip: 'Danh sach bookmark',
+            tooltip: 'Danh sách bookmark',
             onPressed: _showBookmarksDialog,
             icon: const Icon(Icons.bookmarks_outlined, color: Colors.blue),
           ),
@@ -663,7 +867,9 @@ class _Reader extends State<Reader> {
           : (_hasRemotePdf || _hasRemoteEpub)
           ? _buildRemoteFileReader()
           : _buildTextReader(),
-      bottomNavigationBar: _buildBottomPageNavigation(totalPage),
+      bottomNavigationBar: (_shouldUseWebView || _usesExternalReader)
+          ? null
+          : _buildBottomPageNavigation(totalPage),
     );
   }
 
@@ -676,7 +882,7 @@ class _Reader extends State<Reader> {
 
     if (result.type != ResultType.done) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Khong the mo file: ${result.message}')),
+        SnackBar(content: Text('Không thể mở file: ${result.message}')),
       );
     }
   }
@@ -719,7 +925,7 @@ class _Reader extends State<Reader> {
         );
         if (!launched && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Khong the mo file: ${result.message}')),
+            SnackBar(content: Text('Không thể mở file: ${result.message}')),
           );
         }
       }
@@ -727,7 +933,7 @@ class _Reader extends State<Reader> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Khong the tai/mo file: $e')));
+      ).showSnackBar(SnackBar(content: Text('Không thể tải/mở file: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -745,7 +951,7 @@ class _Reader extends State<Reader> {
     );
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Khong the mo link doc sach.')),
+        const SnackBar(content: Text('Không thể mở link đọc sách.')),
       );
     }
   }
@@ -785,14 +991,14 @@ class _Reader extends State<Reader> {
                     )
                   : const Icon(Icons.open_in_new),
               label: Text(
-                _isOpeningRemoteFile ? 'Dang mo...' : 'Mo $extension',
+                _isOpeningRemoteFile ? 'Đang mở...' : 'Mở $extension',
               ),
             ),
             if (_hasOnlineLink) ...[
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => _openOnlineLinkExternal(_onlineLink),
-                child: const Text('Mo ban doc online'),
+                child: const Text('Mở bản đọc online'),
               ),
             ],
           ],
@@ -818,7 +1024,7 @@ class _Reader extends State<Reader> {
               const Icon(Icons.error_outline, size: 64, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
-                _webErrorMessage ?? 'Khong the mo sach bang WebView.',
+                _webErrorMessage ?? 'Không thể mở sách bằng WebView.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -831,7 +1037,7 @@ class _Reader extends State<Reader> {
                           extension: 'pdf',
                         ),
                   icon: const Icon(Icons.picture_as_pdf),
-                  label: const Text('Mo PDF'),
+                  label: const Text('Mở PDF'),
                 ),
               if (_hasRemoteEpub)
                 ElevatedButton.icon(
@@ -842,15 +1048,15 @@ class _Reader extends State<Reader> {
                           extension: 'epub',
                         ),
                   icon: const Icon(Icons.menu_book),
-                  label: const Text('Mo EPUB'),
+                  label: const Text('Mở EPUB'),
                 ),
               TextButton(
                 onPressed: () => _openOnlineLinkExternal(_onlineLink),
-                child: const Text('Mo bang trinh duyet'),
+                child: const Text('Mở bằng trình duyệt'),
               ),
               TextButton(
                 onPressed: _reloadWebView,
-                child: const Text('Thu lai'),
+                child: const Text('Thử lại'),
               ),
             ],
           ),
@@ -872,7 +1078,7 @@ class _Reader extends State<Reader> {
       return FutureBuilder<List<String>>(
         future: _pagesFuture,
         builder: (context, snapshot) {
-          final message = snapshot.data?.first ?? 'File chua san sang de mo.';
+          final message = snapshot.data?.first ?? 'File chưa sẵn sàng để mở.';
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -886,7 +1092,7 @@ class _Reader extends State<Reader> {
                   ElevatedButton.icon(
                     onPressed: _openLocalFileExternal,
                     icon: const Icon(Icons.open_in_new),
-                    label: const Text('Mo bang ung dung khac'),
+                    label: const Text('Mở bằng ứng dụng khác'),
                   ),
                 ],
               ),
@@ -896,7 +1102,12 @@ class _Reader extends State<Reader> {
       );
     }
 
-    return Stack(
+    final backgroundColor = _readerBackgroundColor();
+    final textColor = _readerTextColor();
+
+    return ColoredBox(
+      color: backgroundColor,
+      child: Stack(
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 50),
@@ -921,20 +1132,36 @@ class _Reader extends State<Reader> {
 
               final pages = snapshot.data ?? const <String>[''];
               final totalPages = pages.isEmpty ? 1 : pages.length;
-              final pageIndex = (newvalue - 1).clamp(0, totalPages - 1).toInt();
-              final content = pages.isEmpty ? '' : pages[pageIndex];
-
-              return SingleChildScrollView(
-                child: Center(
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      content,
-                      style: const TextStyle(fontSize: 18, height: 1.6),
+              return PageView.builder(
+                controller: _pageController,
+                itemCount: totalPages,
+                onPageChanged: (index) {
+                  final page = index + 1;
+                  if (newvalue == page) return;
+                  setState(() {
+                    newvalue = page;
+                  });
+                  _saveProgress();
+                },
+                itemBuilder: (context, index) {
+                  final content = pages.isEmpty ? '' : pages[index];
+                  return SingleChildScrollView(
+                    child: Center(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          content,
+                          style: TextStyle(
+                            fontSize: 18 * _fontScale,
+                            height: 1.6,
+                            color: textColor,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               );
             },
           ),
@@ -1032,7 +1259,19 @@ class _Reader extends State<Reader> {
           ),
         ),
       ],
+      ),
     );
+  }
+
+  Color _readerBackgroundColor() {
+    if (_readingMode == 'dark') return const Color(0xFF151515);
+    if (_readingMode == 'sepia') return const Color(0xFFF4ECD8);
+    return Colors.white;
+  }
+
+  Color _readerTextColor() {
+    if (_readingMode == 'dark') return const Color(0xFFEDEDED);
+    return const Color(0xFF202124);
   }
 
   Widget _buildBottomPageNavigation(int totalPage) {

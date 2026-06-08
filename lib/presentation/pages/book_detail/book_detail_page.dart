@@ -30,7 +30,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
     _bookId = routeBookId;
     _bookFuture = _bookId.trim().isEmpty
-        ? Future<Book>.error('Ma sach khong hop le.')
+        ? Future<Book>.error('Mã sách không hợp lệ.')
         : context.read<BookRepository>().getBookDetail(_bookId);
     _checkFavorite();
   }
@@ -63,7 +63,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_isFavorite ? 'Da them yeu thich' : 'Da bo yeu thich'),
+        content: Text(_isFavorite ? 'Đã thêm yêu thích' : 'Đã bỏ yêu thích'),
       ),
     );
   }
@@ -85,7 +85,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Khong the tai chi tiet sach:\n${snapshot.error}',
+                  'Không thể tải chi tiết sách:\n${snapshot.error}',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -96,7 +96,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
         final book = snapshot.data;
         if (book == null) {
           return const Scaffold(
-            body: Center(child: Text('Khong tim thay sach.')),
+            body: Center(child: Text('Không tìm thấy sách.')),
           );
         }
 
@@ -123,20 +123,25 @@ class _BookDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.chevron_left, color: Colors.black, size: 30),
+          icon: Icon(
+            Icons.chevron_left,
+            color: theme.colorScheme.onSurface,
+            size: 30,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: Colors.black,
+              color: theme.colorScheme.onSurface,
               size: 28,
             ),
             onPressed: onFavorite,
@@ -157,23 +162,28 @@ class _BookDetailContent extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: Colors.black,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
               Text.rich(
                 TextSpan(
                   text: 'Author: ',
-                  style: const TextStyle(color: Colors.black87, fontSize: 14),
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
                   children: [
                     TextSpan(
                       text: book.authors.isEmpty
                           ? 'Unknown'
                           : book.authors.first,
-                      style: const TextStyle(color: Color(0xFF4B5563)),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -266,12 +276,12 @@ class _BookDetailContent extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Da luu sach vao thu vien')));
+      ).showSnackBar(const SnackBar(content: Text('Đã lưu sách vào thư viện')));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Khong the tai sach: $e')));
+      ).showSnackBar(SnackBar(content: Text('Không thể tải sách: $e')));
     }
   }
 
@@ -288,7 +298,7 @@ class _BookDetailContent extends StatelessWidget {
     if (!canReadOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sach nay chua co link doc online mien phi.'),
+          content: Text('Sách này chưa có link đọc online miễn phí.'),
         ),
       );
       return;
@@ -311,7 +321,7 @@ class _BookDetailContent extends StatelessWidget {
         if (context.mounted) {
           Navigator.of(context, rootNavigator: true).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Khong the tai noi dung sach: $e')),
+            SnackBar(content: Text('Không thể tải nội dung sách: $e')),
           );
         }
         return;
@@ -320,6 +330,13 @@ class _BookDetailContent extends StatelessWidget {
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
     }
+
+    if (!context.mounted) return;
+    try {
+      await context.read<BookRepository>().saveBookMetadataOffline(book);
+      final userId = context.read<AuthProvider>().currentUser?.userId;
+      await context.read<LibraryProvider>().loadOfflineBooks(userId: userId);
+    } catch (_) {}
 
     if (!context.mounted) return;
     Navigator.push(
@@ -331,6 +348,7 @@ class _BookDetailContent extends StatelessWidget {
               ? 1
               : (book.pageCount > 0 ? book.pageCount : 1),
           title: book.title,
+          coverUrl: book.thumbnailUrl,
           bookId: book.id,
           userId: context.read<AuthProvider>().currentUser?.userId,
           webReaderLink: isFullTextApiBook ? null : book.webReaderLink,

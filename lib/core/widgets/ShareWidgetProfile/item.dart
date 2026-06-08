@@ -14,6 +14,7 @@ class _item extends State<Item> {
   bool isHover = false;
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       onHover: (value) {
         setState(() => isHover = value);
@@ -23,7 +24,7 @@ class _item extends State<Item> {
         width: MediaQuery.of(context).size.width * 0.3,
 
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
@@ -37,11 +38,19 @@ class _item extends State<Item> {
           children: [
             Text(
               widget.value.toString(),
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
             Text(
               widget.text,
-              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 16),
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                fontSize: 16,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+              ),
             ),
           ],
         ),

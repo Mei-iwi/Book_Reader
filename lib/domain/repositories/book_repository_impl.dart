@@ -184,10 +184,11 @@ class BookRepositoryImpl implements BookRepository {
 
   @override
   Future<void> saveBookMetadataOffline(Book book) async {
+    final existing = await _offlineBookDao.getBookById(book.id);
     final bookModel = BookModel.fromEntity(
       book,
-      isDownloaded: false,
-      localFilePath: '',
+      isDownloaded: existing?.isDownloaded ?? false,
+      localFilePath: existing?.localFilePath ?? '',
     );
     await _offlineBookDao.insertOrUpdateBook(bookModel);
   }
