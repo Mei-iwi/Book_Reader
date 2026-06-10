@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,7 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
+  static const Duration _requestTimeout = Duration(seconds: 15);
+
+  final http.Client _httpClient;
   String? _token;
+
+  ApiClient({http.Client? httpClient})
+    : _httpClient = httpClient ?? http.Client();
 
   String? get token => _token;
 
@@ -88,7 +95,9 @@ class ApiClient {
     final uri = Uri.parse(
       '$baseUrl$endpoint',
     ).replace(queryParameters: queryParameters);
-    debugPrint('API $method $uri');
+    if (kDebugMode) {
+      debugPrint('API $method $uri');
+    }
 
     final headers = <String, String>{
       'Accept': 'application/json',
@@ -105,11 +114,13 @@ class ApiClient {
 
     try {
       response = await (switch (method) {
-        'POST' => http.post(uri, headers: headers, body: encodedBody),
-        'PUT' => http.put(uri, headers: headers, body: encodedBody),
-        'DELETE' => http.delete(uri, headers: headers),
-        _ => http.get(uri, headers: headers),
-      }).timeout(const Duration(seconds: 20));
+        'POST' => _httpClient.post(uri, headers: headers, body: encodedBody),
+        'PUT' => _httpClient.put(uri, headers: headers, body: encodedBody),
+        'DELETE' => _httpClient.delete(uri, headers: headers),
+        _ => _httpClient.get(uri, headers: headers),
+      }).timeout(_requestTimeout);
+    } on TimeoutException {
+      throw Exception('Backend phản hồi quá lâu. Vui lòng thử lại.');
     } on SocketException {
       throw Exception(
         'Không thể kết nối backend. Hãy kiểm tra mạng hoặc server.',

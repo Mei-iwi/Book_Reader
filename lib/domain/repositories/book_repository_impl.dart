@@ -17,6 +17,7 @@ class BookRepositoryImpl implements BookRepository {
   final GutendexApi _gutendexApi;
   final OfflineBookDao _offlineBookDao;
   final BookFileDownloader _bookFileDownloader;
+  final Map<String, Future<Book>> _bookDetailCache = {};
 
   BookRepositoryImpl(
     this._backendBooksApi,
@@ -40,12 +41,24 @@ class BookRepositoryImpl implements BookRepository {
   }
 
   @override
-  Future<Book> getBookDetail(String bookId) {
-    if (_gutendexApi.isGutendexId(bookId)) {
-      return _gutendexApi.getBookDetail(bookId);
+  Future<Book> getBookDetail(String bookId) async {
+    final id = bookId.trim();
+    if (id.isEmpty) {
+      throw Exception('Ma sach khong hop le.');
     }
 
-    return _googleBooksApi.getBookDetail(bookId);
+    final cachedFuture = _bookDetailCache[id];
+    if (cachedFuture != null) return cachedFuture;
+
+    final future = _getBookDetailUncached(id);
+    _bookDetailCache[id] = future;
+
+    try {
+      return await future;
+    } catch (_) {
+      _bookDetailCache.remove(id);
+      rethrow;
+    }
   }
 
   @override
@@ -54,18 +67,19 @@ class BookRepositoryImpl implements BookRepository {
     bool onlyFreeEbooks = false,
     int maxResults = 10,
   }) async {
-    final backendBooks = await _safeBackendSearch(keyword, maxResults);
+    final results = await Future.wait<List<Book>>([
+      _safeBackendSearch(keyword, maxResults),
+      _safeGoogleSearch(
+        keyword: keyword,
+        maxResults: maxResults,
+        onlyFreeEbooks: onlyFreeEbooks,
+      ),
+      _safeGutendexSearch(keyword, maxResults),
+    ]);
 
-    final googleBooks = await _googleBooksApi.searchBooks(
-      keyword: keyword,
-      maxResult: maxResults,
-      onlyFreeEbooks: onlyFreeEbooks,
-    );
-
-    final gutendexBooks = await _gutendexApi.searchBooks(
-      keyword: keyword,
-      maxResult: maxResults,
-    );
+    final backendBooks = results[0];
+    final googleBooks = results[1];
+    final gutendexBooks = results[2];
 
     final merged = <String, Book>{};
     final orderedBooks = onlyFreeEbooks
@@ -80,11 +94,49 @@ class BookRepositoryImpl implements BookRepository {
     return merged.values.toList();
   }
 
+  Future<Book> _getBookDetailUncached(String bookId) async {
+    final localBook = await _offlineBookDao.getBookById(bookId);
+    if (localBook != null) return localBook;
+
+    if (_gutendexApi.isGutendexId(bookId)) {
+      return _gutendexApi.getBookDetail(bookId);
+    }
+
+    return _googleBooksApi.getBookDetail(bookId);
+  }
+
   Future<List<Book>> _safeBackendSearch(String keyword, int maxResults) async {
     try {
       return await _backendBooksApi.getBooks(
         keyword: keyword,
         pageSize: maxResults,
+      );
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<Book>> _safeGoogleSearch({
+    required String keyword,
+    required int maxResults,
+    required bool onlyFreeEbooks,
+  }) async {
+    try {
+      return await _googleBooksApi.searchBooks(
+        keyword: keyword,
+        maxResult: maxResults,
+        onlyFreeEbooks: onlyFreeEbooks,
+      );
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<Book>> _safeGutendexSearch(String keyword, int maxResults) async {
+    try {
+      return await _gutendexApi.searchBooks(
+        keyword: keyword,
+        maxResult: maxResults,
       );
     } catch (_) {
       return [];
