@@ -11,13 +11,13 @@ class LibraryProvider extends ChangeNotifier {
   String? errMessage;
   List<Book> offlineBooks = [];
 
-  Future<void> loadOfflineBooks() async {
+  Future<void> loadOfflineBooks({int? userId}) async {
     try {
       isLoading = true;
       errMessage = null;
       notifyListeners();
 
-      offlineBooks = await _bookRepository.getOfflineBooks();
+      offlineBooks = await _bookRepository.getOfflineBooks(userId: userId);
 
       debugPrint('===== LIBRARY PROVIDER =====');
       debugPrint('Số sách offline nhận được: ${offlineBooks.length}');

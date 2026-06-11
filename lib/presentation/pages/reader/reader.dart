@@ -380,7 +380,10 @@ class _Reader extends State<Reader> {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
 
-    final progress = await _readingProgressDao.getProgress(bookId);
+    final progress = await _readingProgressDao.getProgress(
+      bookId,
+      userId: widget.userId,
+    );
     if (!mounted || progress == null) return;
 
     final savedPage =
@@ -417,6 +420,7 @@ class _Reader extends State<Reader> {
       progressPercent: progressPercent,
       bookTitle: widget.title,
       coverUrl: widget.coverUrl,
+      userId: widget.userId,
     );
 
     if (mounted) {
@@ -487,7 +491,12 @@ class _Reader extends State<Reader> {
     final note = _bookmarkNote();
     final page = _safeCurrentPage;
 
-    await _bookmarkDao.addBookmark(bookId: bookId, page: page, note: note);
+    await _bookmarkDao.addBookmark(
+      bookId: bookId,
+      page: page,
+      note: note,
+      userId: widget.userId,
+    );
 
     final backendBookId = int.tryParse(bookId);
     final userId = widget.userId;
@@ -532,7 +541,7 @@ class _Reader extends State<Reader> {
   }
 
   String _bookmarkNote() {
-    return 'Trang $_safeCurrentPage - ${_progressPercent.toStringAsFixed(0)}%';
+    return 'Trang $_safeCurrentPage';
   }
 
   Future<void> _showBookmarksDialog() async {
@@ -546,7 +555,10 @@ class _Reader extends State<Reader> {
       return;
     }
 
-    final bookmarks = await _bookmarkDao.getBookmarks(bookId);
+    final bookmarks = await _bookmarkDao.getBookmarks(
+      bookId,
+      userId: widget.userId,
+    );
     if (!mounted) return;
 
     showDialog(
@@ -587,7 +599,10 @@ class _Reader extends State<Reader> {
                     tooltip: 'Xóa bookmark',
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () async {
-                      await _bookmarkDao.deleteBookmark(id);
+                      await _bookmarkDao.deleteBookmark(
+                        id,
+                        userId: widget.userId,
+                      );
                       if (!dialogContext.mounted) return;
                       Navigator.pop(dialogContext);
                       await _showBookmarksDialog();
@@ -626,7 +641,9 @@ class _Reader extends State<Reader> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: const Text('Bạn có muốn rời khỏi trang hiện tại?'),
+        content: const Text(
+          'Ban co muon roi khoi trang hien tai? Neu muon luu dau trang, hay bam bieu tuong bookmark truoc khi roi trang.',
+        ),
         actions: [
           TextButton(
             onPressed: () async {
@@ -634,13 +651,6 @@ class _Reader extends State<Reader> {
               await _leaveReader(parentContext);
             },
             child: const Text('Rời khỏi'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await _leaveReader(parentContext, saveBookmark: true);
-            },
-            child: const Text('Lưu bookmark rời khỏi'),
           ),
           TextButton(
             onPressed: () {
@@ -653,10 +663,7 @@ class _Reader extends State<Reader> {
     );
   }
 
-  Future<void> _leaveReader(
-    BuildContext parentContext, {
-    bool saveBookmark = false,
-  }) async {
+  Future<void> _leaveReader(BuildContext parentContext) async {
     showDialog(
       context: parentContext,
       barrierDismissible: false,
@@ -665,9 +672,6 @@ class _Reader extends State<Reader> {
       },
     );
 
-    if (saveBookmark) {
-      await _saveBookmark();
-    }
     await _saveProgress(syncNow: true);
 
     if (!parentContext.mounted) return;
@@ -729,12 +733,16 @@ class _Reader extends State<Reader> {
   Future<void> _refreshReadingConsumers() async {
     if (!mounted) return;
     try {
-      await context.read<HomeBookProvider>().refreshLocalData();
+      await context.read<HomeBookProvider>().refreshLocalData(
+        userId: widget.userId,
+      );
     } catch (_) {}
 
     if (!mounted) return;
     try {
-      await context.read<LibraryProvider>().refreshLocalBooks();
+      await context.read<LibraryProvider>().refreshLocalBooks(
+        userId: widget.userId,
+      );
     } catch (_) {}
   }
 
@@ -743,9 +751,7 @@ class _Reader extends State<Reader> {
     String saveText = 'Lưu',
   }) async {
     final totalPage = _currentTotalPage;
-    var selectedPercent = ((newvalue / totalPage) * 100)
-        .clamp(0, 100)
-        .toDouble();
+    var selectedPage = _safeCurrentPage;
 
     final saved = await showDialog<bool>(
       context: context,
@@ -755,18 +761,18 @@ class _Reader extends State<Reader> {
             return AlertDialog(
               title: Text(title),
               content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('${selectedPercent.toStringAsFixed(0)}%'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  Text('Trang $selectedPage / $totalPage'),
                   Slider(
-                    value: selectedPercent,
-                    min: 0,
-                    max: 100,
-                    divisions: 20,
-                    label: '${selectedPercent.toStringAsFixed(0)}%',
+                    value: selectedPage.toDouble(),
+                    min: 1,
+                    max: totalPage.toDouble(),
+                    divisions: totalPage > 1 ? totalPage - 1 : null,
+                    label: 'Trang $selectedPage',
                     onChanged: (value) {
                       setDialogState(() {
-                        selectedPercent = value;
+                        selectedPage = value.round().clamp(1, totalPage);
                       });
                     },
                   ),
@@ -779,12 +785,8 @@ class _Reader extends State<Reader> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    final page = ((selectedPercent / 100) * totalPage)
-                        .round()
-                        .clamp(1, totalPage)
-                        .toInt();
                     setState(() {
-                      newvalue = page;
+                      newvalue = selectedPage;
                     });
                     await _saveProgress(syncNow: true);
                     if (!dialogContext.mounted) return;
@@ -897,9 +899,9 @@ class _Reader extends State<Reader> {
             ),
           if (_shouldUseWebView || _usesExternalReader)
             IconButton(
-              tooltip: 'Cập nhật tiến độ',
+              tooltip: 'Cap nhat trang doc',
               onPressed: _showProgressDialog,
-              icon: const Icon(Icons.percent, color: Colors.blue),
+              icon: const Icon(Icons.menu_book_outlined, color: Colors.blue),
             ),
           IconButton(
             tooltip: 'Chế độ đọc',
@@ -1272,7 +1274,7 @@ class _Reader extends State<Reader> {
                 ),
               ),
               child: Text(
-                'Page $_safeCurrentPage - ${_progressPercent.toStringAsFixed(0)}%',
+                'Page $_safeCurrentPage of $_currentTotalPage',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -1397,7 +1399,7 @@ class _Reader extends State<Reader> {
           ),
           Flexible(
             child: Text(
-              'Page $_safeCurrentPage of $totalPage - ${_progressPercent.toStringAsFixed(0)}%',
+              'Page $_safeCurrentPage of $totalPage',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

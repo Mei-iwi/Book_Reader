@@ -32,7 +32,8 @@ class _Home extends State<Home> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeBookProvider>().loadHomeData();
+      final userId = context.read<AuthProvider>().currentUser?.userId;
+      context.read<HomeBookProvider>().loadHomeData(userId: userId);
     });
   }
 
@@ -238,13 +239,10 @@ Widget _buildBody(HomeBookProvider provider) {
           ),
           for (final entry in provider.recommendationSections.entries)
             _buiderBookSection(
-              title: entry.key == 'Backend Books'
-                  ? 'Backend Books'
-                  : 'Recommendations - ${entry.key}',
+              title: 'Recommendations - ${entry.key}',
               books: entry.value,
-              emptyMessage: entry.key == 'Backend Books'
-                  ? 'Không tải được sách từ backend.'
-                  : 'Không tải được sách miễn phí từ Google Books cho mục này.',
+              emptyMessage:
+                  'Không tải được sách miễn phí từ Google Books cho mục này.',
             ),
         ],
       ],
@@ -311,7 +309,7 @@ Widget _buiderBookSection({
                       .currentUser
                       ?.userId;
 
-                  await homeProvider.saveBookOffline(book);
+                  await homeProvider.saveBookOffline(book, userId: userId);
 
                   if (!context.mounted) return;
 
@@ -337,7 +335,10 @@ Widget _buiderBookSection({
 Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
   final progress = await ReadingProgressDao(
     AppDatabase.instance,
-  ).getProgress(book.id);
+  ).getProgress(
+    book.id,
+    userId: context.read<AuthProvider>().currentUser?.userId,
+  );
   final currentPageValue = progress?['current_page'];
   final currentPage = currentPageValue is num ? currentPageValue.toInt() : 1;
 
@@ -363,7 +364,9 @@ Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
   );
 
   if (!context.mounted) return;
-  await context.read<HomeBookProvider>().refreshLocalData();
+  await context.read<HomeBookProvider>().refreshLocalData(
+    userId: context.read<AuthProvider>().currentUser?.userId,
+  );
 }
 
 TextStyle style() {

@@ -328,7 +328,7 @@ class _LibraryPageState extends State<LibraryPage> {
         isDownloaded: true,
       );
 
-      await repo.saveBookOffline(newBook);
+      await repo.saveBookOffline(newBook, userId: userId);
       if (!mounted) return;
       await provider.loadOfflineBooks(userId: userId);
       if (!context.mounted) return;

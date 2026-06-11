@@ -4,6 +4,8 @@ import 'package:book_reader/presentation/pages/auth/new_password.dart';
 import 'package:book_reader/presentation/pages/auth/sign_in.dart';
 import 'package:book_reader/presentation/pages/auth/sign_up.dart';
 import 'package:book_reader/presentation/pages/auth/verify_info.dart';
+import 'package:book_reader/presentation/pages/admin/admin_dashboard_page.dart';
+import 'package:book_reader/presentation/pages/admin/admin_login_page.dart';
 import 'package:book_reader/presentation/pages/book_detail/book_detail_page.dart';
 import 'package:book_reader/presentation/pages/home/homescreen.dart';
 import 'package:book_reader/presentation/pages/membership/membership_package_page.dart';
@@ -24,6 +26,8 @@ class AppRoute {
   static const membership = '/membership';
   static const bookDetail = '/book-detail';
   static const search = '/search';
+  static const adminLogin = '/admin-login';
+  static const adminDashboard = '/admin-dashboard';
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashPage(),
     login: (_) => const Login(),
@@ -36,5 +40,7 @@ class AppRoute {
     membership: (_) => const MembershipPackageScreen(),
     bookDetail: (_) => const BookDetailPage(),
     search: (_) => const SearchPage(),
+    adminLogin: (_) => const AdminLoginPage(),
+    adminDashboard: (_) => const AdminDashboardPage(),
   };
 }

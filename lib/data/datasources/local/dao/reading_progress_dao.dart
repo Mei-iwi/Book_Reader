@@ -6,6 +6,8 @@ class ReadingProgressDao {
 
   ReadingProgressDao(this._appDatabase);
 
+  int _scope(int? userId) => userId ?? 0;
+
   Future<void> saveProgress({
     required String bookId,
     required int currentPage,
@@ -13,6 +15,7 @@ class ReadingProgressDao {
     required double progressPercent,
     String? bookTitle,
     String? coverUrl,
+    int? userId,
   }) async {
     final db = await _appDatabase.database;
     final safeTotalPage = totalPage <= 0 ? 1 : totalPage;
@@ -25,11 +28,12 @@ class ReadingProgressDao {
 
     final existing = await db.query(
       TableNames.readingProgress,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
       limit: 1,
     );
     final data = {
+      'user_id': _scope(userId),
       'book_id': bookId,
       'book_title': bookTitle,
       'cover_url': coverUrl,
@@ -45,36 +49,43 @@ class ReadingProgressDao {
       await db.update(
         TableNames.readingProgress,
         data,
-        where: 'book_id = ?',
-        whereArgs: [bookId],
+        where: 'user_id = ? AND book_id = ?',
+        whereArgs: [_scope(userId), bookId],
       );
     }
   }
 
-  Future<Map<String, dynamic>?> getProgress(String bookId) async {
+  Future<Map<String, dynamic>?> getProgress(String bookId, {int? userId}) async {
     final db = await _appDatabase.database;
     final maps = await db.query(
       TableNames.readingProgress,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
       limit: 1,
     );
     if (maps.isEmpty) return null;
     return maps.first;
   }
 
-  Future<List<Map<String, dynamic>>> getAllProgress() async {
+  Future<List<Map<String, dynamic>>> getAllProgress({int? userId}) async {
     final db = await _appDatabase.database;
     return await db.query(
       TableNames.readingProgress,
+      where: 'user_id = ?',
+      whereArgs: [_scope(userId)],
       orderBy: 'updated_at DESC',
     );
   }
 
-  Future<List<Map<String, dynamic>>> getRecentProgress({int limit = 10}) async {
+  Future<List<Map<String, dynamic>>> getRecentProgress({
+    int limit = 10,
+    int? userId,
+  }) async {
     final db = await _appDatabase.database;
     return await db.query(
       TableNames.readingProgress,
+      where: 'user_id = ?',
+      whereArgs: [_scope(userId)],
       orderBy: 'updated_at DESC',
       limit: limit,
     );
@@ -82,35 +93,36 @@ class ReadingProgressDao {
 
   Future<List<Map<String, dynamic>>> getContinueProgress({
     int limit = 5,
+    int? userId,
   }) async {
     final db = await _appDatabase.database;
     return await db.query(
       TableNames.readingProgress,
-      where: 'progress_percent > ? AND progress_percent < ?',
-      whereArgs: [0, 100],
+      where: 'user_id = ? AND progress_percent > ? AND progress_percent < ?',
+      whereArgs: [_scope(userId), 0, 100],
       orderBy: 'progress_percent DESC, updated_at DESC',
       limit: limit,
     );
   }
 
-  Future<void> deleteProgress(String bookId) async {
+  Future<void> deleteProgress(String bookId, {int? userId}) async {
     final db = await _appDatabase.database;
     await db.delete(
       TableNames.readingProgress,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
     );
   }
 
-  Future<void> pruneOldProgress({int keep = 10}) async {
+  Future<void> pruneOldProgress({int keep = 10, int? userId}) async {
     if (keep < 1) return;
 
     final db = await _appDatabase.database;
     await db.delete(
       TableNames.readingProgress,
       where:
-          'id NOT IN (SELECT id FROM ${TableNames.readingProgress} ORDER BY updated_at DESC LIMIT ?)',
-      whereArgs: [keep],
+          'user_id = ? AND id NOT IN (SELECT id FROM ${TableNames.readingProgress} WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?)',
+      whereArgs: [_scope(userId), _scope(userId), keep],
     );
   }
 }

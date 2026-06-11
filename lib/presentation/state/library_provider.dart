@@ -32,7 +32,7 @@ class LibraryProvider extends ChangeNotifier {
         remoteBooks = [];
       }
 
-      await refreshLocalBooks(notify: false);
+      await refreshLocalBooks(userId: userId, notify: false);
 
       debugPrint('===== LIBRARY PROVIDER =====');
       debugPrint('Số sách đã lưu: ${offlineBooks.length}');
@@ -51,8 +51,8 @@ class LibraryProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshLocalBooks({bool notify = true}) async {
-    final localBooks = await _bookRepository.getOfflineBooks();
+  Future<void> refreshLocalBooks({int? userId, bool notify = true}) async {
+    final localBooks = await _bookRepository.getOfflineBooks(userId: userId);
     downloadedBooks = localBooks
         .where(
           (book) => book.isDownloaded || book.localFilePath.trim().isNotEmpty,
@@ -81,7 +81,7 @@ class LibraryProvider extends ChangeNotifier {
         }
       }
 
-      await _bookRepository.deleteOfflineBooks(book);
+      await _bookRepository.deleteOfflineBooks(book, userId: userId);
 
       offlineBooks.removeWhere((item) => item.id == book.id);
       remoteBooks.removeWhere((item) => item.id == book.id);

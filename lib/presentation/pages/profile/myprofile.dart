@@ -47,10 +47,11 @@ class _Myprofile extends State<Myprofile> {
     final progDao = ReadingProgressDao(db);
     final bookmarkDao = BookmarkDao(db);
     final profDao = ProfileDao(db);
+    final userId = user?.userId;
 
-    final favs = await favDao.getAllFavorites();
-    await progDao.pruneOldProgress(keep: 10);
-    var hist = await progDao.getRecentProgress(limit: 10);
+    final favs = await favDao.getAllFavorites(userId: userId);
+    await progDao.pruneOldProgress(keep: 10, userId: userId);
+    var hist = await progDao.getRecentProgress(limit: 10, userId: userId);
 
     Map<String, dynamic>? prof;
     if (user != null) {
@@ -59,14 +60,15 @@ class _Myprofile extends State<Myprofile> {
 
     if (mounted) {
       await context.read<LibraryProvider>().loadOfflineBooks(
-        userId: user?.userId,
+        userId: userId,
       );
-      await _enrichHistoryRows(hist, progDao);
-      hist = await progDao.getRecentProgress(limit: 10);
+      await _enrichHistoryRows(hist, progDao, userId: userId);
+      hist = await progDao.getRecentProgress(limit: 10, userId: userId);
     }
 
     final bookmarkCounts = await bookmarkDao.countByBookIds(
       hist.map((row) => row['book_id']?.toString() ?? ''),
+      userId: userId,
     );
 
     if (mounted) {
@@ -459,6 +461,7 @@ class _Myprofile extends State<Myprofile> {
   Future<void> _enrichHistoryRows(
     List<Map<String, dynamic>> rows,
     ReadingProgressDao progDao,
+    {int? userId}
   ) async {
     final libraryBooks = context.read<LibraryProvider>().offlineBooks;
     final repo = context.read<BookRepository>();
@@ -475,7 +478,7 @@ class _Myprofile extends State<Myprofile> {
       if (book == null) {
         try {
           book = await repo.getBookDetail(bookId);
-          await repo.saveBookMetadataOffline(book);
+          await repo.saveBookMetadataOffline(book, userId: userId);
         } catch (_) {
           book = null;
         }
@@ -497,6 +500,7 @@ class _Myprofile extends State<Myprofile> {
         progressPercent: progressPercent,
         bookTitle: book.title,
         coverUrl: book.thumbnailUrl,
+        userId: userId,
       );
     }
   }
@@ -507,7 +511,10 @@ class _Myprofile extends State<Myprofile> {
   ) async {
     if (bookId.isEmpty) return;
 
-    await ReadingProgressDao(AppDatabase.instance).deleteProgress(bookId);
+    await ReadingProgressDao(AppDatabase.instance).deleteProgress(
+      bookId,
+      userId: context.read<AuthProvider>().currentUser?.userId,
+    );
     await _loadData();
 
     if (!context.mounted) return;

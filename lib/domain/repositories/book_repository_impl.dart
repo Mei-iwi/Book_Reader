@@ -144,21 +144,21 @@ class BookRepositoryImpl implements BookRepository {
   }
 
   @override
-  Future<void> deleteOfflineBooks(Book book) {
-    return _offlineBookDao.deleteOfflineBook(book.id);
+  Future<void> deleteOfflineBooks(Book book, {int? userId}) {
+    return _offlineBookDao.deleteOfflineBook(book.id, userId: userId);
   }
 
   @override
-  Future<List<Book>> getOfflineBooks() {
-    return _offlineBookDao.getOfflineBooks();
+  Future<List<Book>> getOfflineBooks({int? userId}) {
+    return _offlineBookDao.getOfflineBooks(userId: userId);
   }
 
   @override
-  Future<void> saveBookOffline(Book book) async {
+  Future<void> saveBookOffline(Book book, {int? userId}) async {
     String localFilePath = book.localFilePath;
 
     if (_isGutendexBook(book)) {
-      localFilePath = await cacheReadableText(book);
+      localFilePath = await cacheReadableText(book, userId: userId);
     }
 
     final hasEpub = book.epubDownloadLink.trim().isNotEmpty;
@@ -170,7 +170,7 @@ class BookRepositoryImpl implements BookRepository {
         localFilePath: localFilePath,
         isDownloaded: true,
       );
-      await _offlineBookDao.insertOrUpdateBook(bookModel);
+      await _offlineBookDao.insertOrUpdateBook(bookModel, userId: userId);
       return;
     }
 
@@ -194,19 +194,19 @@ class BookRepositoryImpl implements BookRepository {
       isDownloaded: localFilePath.isNotEmpty || book.isDownloaded,
     );
 
-    await _offlineBookDao.insertOrUpdateBook(bookModel);
+    await _offlineBookDao.insertOrUpdateBook(bookModel, userId: userId);
   }
 
   @override
-  Future<void> downloadBook(Book book) async {
+  Future<void> downloadBook(Book book, {int? userId}) async {
     if (_isGutendexBook(book)) {
-      final localPath = await cacheReadableText(book);
+      final localPath = await cacheReadableText(book, userId: userId);
       final downloadedBook = BookModel.fromEntity(
         book,
         isDownloaded: localPath.isNotEmpty,
         localFilePath: localPath,
       );
-      await _offlineBookDao.insertOrUpdateBook(downloadedBook);
+      await _offlineBookDao.insertOrUpdateBook(downloadedBook, userId: userId);
       return;
     }
 
@@ -214,7 +214,7 @@ class BookRepositoryImpl implements BookRepository {
     final hasPdf = book.pdfDownloadLink.isNotEmpty;
 
     if (!hasEpub && !hasPdf) {
-      await saveBookMetadataOffline(book);
+      await saveBookMetadataOffline(book, userId: userId);
       return;
     }
     final downloadUrl = hasEpub ? book.epubDownloadLink : book.pdfDownloadLink;
@@ -231,22 +231,25 @@ class BookRepositoryImpl implements BookRepository {
       isDownloaded: localPath.isNotEmpty,
       localFilePath: localPath,
     );
-    await _offlineBookDao.insertOrUpdateBook(downloadedbook);
+    await _offlineBookDao.insertOrUpdateBook(downloadedbook, userId: userId);
   }
 
   @override
-  Future<void> saveBookMetadataOffline(Book book) async {
-    final existing = await _offlineBookDao.getBookById(book.id);
+  Future<void> saveBookMetadataOffline(Book book, {int? userId}) async {
+    final existing = await _offlineBookDao.getBookById(
+      book.id,
+      userId: userId,
+    );
     final bookModel = BookModel.fromEntity(
       book,
       isDownloaded: existing?.isDownloaded ?? false,
       localFilePath: existing?.localFilePath ?? '',
     );
-    await _offlineBookDao.insertOrUpdateBook(bookModel);
+    await _offlineBookDao.insertOrUpdateBook(bookModel, userId: userId);
   }
 
   @override
-  Future<String> cacheReadableText(Book book) async {
+  Future<String> cacheReadableText(Book book, {int? userId}) async {
     if (book.localFilePath.trim().isNotEmpty) {
       final file = File(book.localFilePath);
       if (await file.exists() && await file.length() > 0) {
@@ -272,7 +275,7 @@ class BookRepositoryImpl implements BookRepository {
       localFilePath: filePath,
       isDownloaded: true,
     );
-    await _offlineBookDao.insertOrUpdateBook(cachedBook);
+    await _offlineBookDao.insertOrUpdateBook(cachedBook, userId: userId);
 
     return filePath;
   }

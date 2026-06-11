@@ -5,20 +5,25 @@ class BookmarkDao {
   final AppDatabase _appDatabase;
 
   BookmarkDao(this._appDatabase);
+
+  int _scope(int? userId) => userId ?? 0;
+
   Future<void> addBookmark({
     required String bookId,
     required int page,
     String? note,
+    int? userId,
   }) async {
     final db = await _appDatabase.database;
     final now = DateTime.now().toIso8601String();
     final existing = await db.query(
       TableNames.bookmarks,
-      where: 'book_id = ? AND page = ?',
-      whereArgs: [bookId, page],
+      where: 'user_id = ? AND book_id = ? AND page = ?',
+      whereArgs: [_scope(userId), bookId, page],
       limit: 1,
     );
     final data = {
+      'user_id': _scope(userId),
       'book_id': bookId,
       'page': page,
       'note': note ?? '',
@@ -37,26 +42,32 @@ class BookmarkDao {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getBookmarks(String bookId) async {
+  Future<List<Map<String, dynamic>>> getBookmarks(
+    String bookId, {
+    int? userId,
+  }) async {
     final db = await _appDatabase.database;
     return db.query(
       TableNames.bookmarks,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
       orderBy: 'page ASC',
     );
   }
 
-  Future<void> deleteBookmark(int bookmarkId) async {
+  Future<void> deleteBookmark(int bookmarkId, {int? userId}) async {
     final db = await _appDatabase.database;
     await db.delete(
       TableNames.bookmarks,
-      where: 'id = ?',
-      whereArgs: [bookmarkId],
+      where: 'user_id = ? AND id = ?',
+      whereArgs: [_scope(userId), bookmarkId],
     );
   }
 
-  Future<Map<String, int>> countByBookIds(Iterable<String> bookIds) async {
+  Future<Map<String, int>> countByBookIds(
+    Iterable<String> bookIds, {
+    int? userId,
+  }) async {
     final ids = bookIds
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
@@ -69,9 +80,9 @@ class BookmarkDao {
     final rows = await db.rawQuery('''
       SELECT book_id, COUNT(*) AS bookmark_count
       FROM ${TableNames.bookmarks}
-      WHERE book_id IN ($placeholders)
+      WHERE user_id = ? AND book_id IN ($placeholders)
       GROUP BY book_id
-      ''', ids);
+      ''', [_scope(userId), ...ids]);
 
     return {
       for (final row in rows)
