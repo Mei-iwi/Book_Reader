@@ -1,4 +1,5 @@
 import 'package:book_reader/core/services/local_storage/session_storage.dart';
+import 'package:book_reader/data/models/admin_user_model.dart';
 import 'package:book_reader/domain/entities/app_user.dart';
 import 'package:book_reader/domain/repositories/auth_repository.dart';
 import 'package:book_reader/presentation/pages/auth/login.dart';
@@ -59,4 +60,72 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {}
+
+  @override
+  Future<AdminUserModel> createAdminUser({
+    required String fullName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+    required String role,
+    required bool isActive,
+    String? phoneNumber,
+  }) {
+    // TODO: implement createAdminUser
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteAdminUser(int userId) {
+    // TODO: implement deleteAdminUser
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<AdminUserModel>> getAdminUsers() {
+    // TODO: implement getAdminUsers
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> requestPasswordReset({required String email}) {
+    // TODO: implement requestPasswordReset
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+    required String confirmPassword,
+  }) {
+    // TODO: implement resetPassword
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AdminUserModel> updateAdminUser({
+    required int userId,
+    required String fullName,
+    required String email,
+    required String role,
+    required bool isActive,
+    String? phoneNumber,
+    String? avatarUrl,
+    String? password,
+    String? confirmPassword,
+  }) {
+    // TODO: implement updateAdminUser
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) {
+    // TODO: implement verifyPasswordResetCode
+    throw UnimplementedError();
+  }
 }
