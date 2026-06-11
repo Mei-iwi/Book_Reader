@@ -1,7 +1,6 @@
+import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/presentation/pages/library/library_page.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../state/book_provider.dart';
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
@@ -11,6 +10,8 @@ class CategoryPage extends StatefulWidget {
 }
 
 class _CategoryPageState extends State<CategoryPage> {
+  final _searchController = TextEditingController();
+
   // Danh sách thể loại bám sát file thiết kế của bạn
   final List<String> categories = [
     "Science books",
@@ -20,6 +21,20 @@ class _CategoryPageState extends State<CategoryPage> {
     "Travel books",
     "Downloaded",
   ];
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _openSearch([String? keyword]) {
+    Navigator.pushNamed(
+      context,
+      AppRoute.search,
+      arguments: (keyword ?? _searchController.text).trim(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +47,16 @@ class _CategoryPageState extends State<CategoryPage> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
-                onSubmitted: (value) {
-                  // Gọi logic tìm kiếm từ Provider
-                  context.read<BookProvider>().search(value);
-                },
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _openSearch,
                 decoration: InputDecoration(
                   hintText: 'Search',
-                  suffixIcon: const Icon(Icons.search, color: Colors.blue),
+                  suffixIcon: IconButton(
+                    tooltip: 'Tìm sách',
+                    onPressed: _openSearch,
+                    icon: const Icon(Icons.search, color: Colors.blue),
+                  ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),

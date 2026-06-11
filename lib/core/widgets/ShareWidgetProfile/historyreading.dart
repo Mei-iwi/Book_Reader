@@ -8,6 +8,7 @@ Widget bookReading({
   VoidCallback? onTap,
   VoidCallback? onDelete,
   Widget? action,
+  int bookmarkCount = 0,
 }) {
   return Builder(
     builder: (context) {
@@ -60,10 +61,11 @@ Widget bookReading({
                       ),
                       SizedBox(height: 20),
                       percentBook(percent, context),
-                      if (action != null) ...[
-                        SizedBox(height: 12),
-                        action,
+                      if (bookmarkCount > 0) ...[
+                        const SizedBox(height: 10),
+                        _bookmarkCountChip(bookmarkCount, context),
                       ],
+                      if (action != null) ...[SizedBox(height: 12), action],
                     ],
                   ),
                 ),
@@ -101,40 +103,52 @@ bool _isBrokenDemoUrl(String url) {
 
 Widget percentBook(double percent, BuildContext context) {
   final safePercent = percent.clamp(0, 100).toDouble();
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.blue[100],
-              borderRadius: BorderRadius.circular(100),
-            ),
-            width: constraints.maxWidth,
-            height: 10,
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "${safePercent.toStringAsFixed(0)}% Completed",
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+      const SizedBox(height: 6),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(100),
+        child: LinearProgressIndicator(
+          minHeight: 10,
+          value: safePercent / 100,
+          backgroundColor: Colors.blue[100],
+          valueColor: const AlwaysStoppedAnimation<Color>(Colors.grey),
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _bookmarkCountChip(int count, BuildContext context) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(100),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.bookmark,
+          size: 16,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '$count bookmark',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            width: constraints.maxWidth * (safePercent / 100),
-            height: 10,
-          ),
-          Positioned.fill(
-            top: -30,
-            child: Center(
-              child: Text(
-                "${safePercent.toStringAsFixed(0)}% Completed",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    },
+        ),
+      ],
+    ),
   );
 }
