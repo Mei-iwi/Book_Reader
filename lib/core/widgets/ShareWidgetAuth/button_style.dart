@@ -17,18 +17,36 @@ Widget button({required String text, required VoidCallback func}) {
   return Builder(
     builder: (context) {
       final theme = Theme.of(context);
-      return ElevatedButton(
-        onPressed: func,
-        style: ElevatedButton.styleFrom(
-          minimumSize: Size(300, 55),
-          backgroundColor: theme.colorScheme.surface,
-          side: BorderSide(color: Colors.blue, width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        ),
-
-        child: Text(
-          text,
-          style: stylebutton(size: 20, fontWeight: true, color: Colors.blue),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton(
+              onPressed: func,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.surface,
+                side: BorderSide(color: Colors.blue, width: 1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  style: stylebutton(
+                    size: 20,
+                    fontWeight: true,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       );
     },
@@ -36,17 +54,35 @@ Widget button({required String text, required VoidCallback func}) {
 }
 
 Widget buttonFull({required String text, required VoidCallback func}) {
-  return ElevatedButton(
-    onPressed: func,
-    style: ElevatedButton.styleFrom(
-      minimumSize: Size(300, 55),
-      backgroundColor: Colors.blue,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-    ),
-
-    child: Text(
-      text,
-      style: stylebutton(size: 20, fontWeight: true, color: Colors.white),
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 24),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 380),
+      child: SizedBox(
+        width: double.infinity,
+        height: 55,
+        child: ElevatedButton(
+          onPressed: func,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              text,
+              maxLines: 1,
+              style: stylebutton(
+                size: 20,
+                fontWeight: true,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }

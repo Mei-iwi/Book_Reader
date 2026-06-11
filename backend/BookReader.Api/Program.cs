@@ -11,7 +11,7 @@ LoadDotEnv();
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<BookReaderDbContext>(options =>
+builder.Services.AddDbContextPool<BookReaderDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddCors(options =>
@@ -73,7 +73,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("FlutterCors");
 

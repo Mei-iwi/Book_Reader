@@ -7,10 +7,6 @@ namespace BookReader.Api.Data;
 
 public partial class BookReaderDbContext : DbContext
 {
-    public BookReaderDbContext()
-    {
-    }
-
     public BookReaderDbContext(DbContextOptions<BookReaderDbContext> options)
         : base(options)
     {

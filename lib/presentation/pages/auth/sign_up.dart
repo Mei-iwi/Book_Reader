@@ -2,6 +2,7 @@ import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
 import 'package:book_reader/core/utils/validators.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/auth_scroll_view.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
@@ -59,13 +60,14 @@ class _Signup extends State<Signup> {
     final isLoading = context.watch<AuthProvider>().isLoading;
 
     return Scaffold(
-      body: SingleChildScrollView(
+      resizeToAvoidBottomInset: true,
+      body: AuthScrollView(
         child: Form(
           key: _formKey,
           child: Column(
             children: [
               myBanner(urlBanner: Myimages.myBanner, text: Mytext.textSignUp),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
               FormInput(
                 text: 'Full name',
                 icon: Icons.people_alt,
@@ -75,15 +77,15 @@ class _Signup extends State<Signup> {
                     AppValidators.requiredText(v, 'ho ten') ??
                     AppValidators.maxLength(v, 80, 'Ho ten'),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 22),
               FormInput(
                 text: 'Phone or Email',
-                icon: Icons.lock,
+                icon: Icons.mail,
                 isPassword: false,
                 controller: mail,
                 validator: AppValidators.email,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 22),
               FormInput(
                 text: 'Password',
                 icon: Icons.lock,
@@ -91,7 +93,7 @@ class _Signup extends State<Signup> {
                 controller: passWord,
                 validator: AppValidators.password,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 22),
               FormInput(
                 text: 'Confirm Password',
                 icon: Icons.lock,
@@ -100,13 +102,15 @@ class _Signup extends State<Signup> {
                 validator: (v) =>
                     AppValidators.confirmPassword(v, passWord.text),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
               if (isLoading)
                 const CircularProgressIndicator()
               else
                 buttonFull(text: Mytext.textSignUp, func: _register),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text(
                     'Already have a account?',

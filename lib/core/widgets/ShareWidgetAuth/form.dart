@@ -25,51 +25,45 @@ class _FormInput extends State<FormInput> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: EdgeInsets.all(0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 300,
-            child: TextFormField(
-              controller: widget.controller,
-              validator: widget.validator,
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                prefixIcon: Icon(widget.icon, color: Colors.blue),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                label: Text(
-                  widget.text,
-                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                ),
-
-                suffixIcon: (widget.isPassword
-                    ? IconButton(
-                        onPressed: () => setState(() {
-                          _isHide = !_isHide;
-                        }),
-                        icon: (_isHide
-                            ? Icon(
-                                Icons.remove_red_eye,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )
-                            : Icon(
-                                Icons.visibility_off,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                      )
-                    : null),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: TextFormField(
+            controller: widget.controller,
+            validator: widget.validator,
+            style: TextStyle(color: theme.colorScheme.onSurface),
+            textInputAction: widget.isPassword
+                ? TextInputAction.done
+                : TextInputAction.next,
+            decoration: InputDecoration(
+              prefixIcon: Icon(widget.icon, color: Colors.blue),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blue),
               ),
-              obscureText: ((widget.isPassword && _isHide) ? true : false),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blue),
+              ),
+              errorMaxLines: 2,
+              labelText: widget.text,
+              labelStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              floatingLabelStyle: const TextStyle(color: Colors.blue),
+              suffixIcon: widget.isPassword
+                  ? IconButton(
+                      onPressed: () => setState(() {
+                        _isHide = !_isHide;
+                      }),
+                      icon: Icon(
+                        _isHide ? Icons.visibility : Icons.visibility_off,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  : null,
             ),
+            obscureText: widget.isPassword && _isHide,
           ),
-        ],
+        ),
       ),
     );
   }

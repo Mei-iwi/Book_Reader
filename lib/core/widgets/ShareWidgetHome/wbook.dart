@@ -64,6 +64,18 @@ Widget wbook({
             ),
             const SizedBox(height: 6),
             Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
               isFree ? 'Miễn phí' : 'Có phí',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

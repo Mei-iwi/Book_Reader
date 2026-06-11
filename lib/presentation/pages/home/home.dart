@@ -269,7 +269,7 @@ Widget _buiderBookSection({
         Padding(padding: const EdgeInsets.all(12), child: Text(emptyMessage))
       else
         SizedBox(
-          height: 230,
+          height: 260,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: books.length,
@@ -333,9 +333,7 @@ Widget _buiderBookSection({
 }
 
 Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
-  final progress = await ReadingProgressDao(
-    AppDatabase.instance,
-  ).getProgress(
+  final progress = await ReadingProgressDao(AppDatabase.instance).getProgress(
     book.id,
     userId: context.read<AuthProvider>().currentUser?.userId,
   );
