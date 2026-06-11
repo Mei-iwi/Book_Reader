@@ -7,6 +7,7 @@ import 'package:book_reader/presentation/pages/auth/verify_info.dart';
 import 'package:book_reader/presentation/pages/book_detail/book_detail_page.dart';
 import 'package:book_reader/presentation/pages/home/homescreen.dart';
 import 'package:book_reader/presentation/pages/membership/membership_package_page.dart';
+import 'package:book_reader/presentation/pages/search/search_page.dart';
 import 'package:book_reader/presentation/pages/splash/splash_page.dart';
 
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ class AppRoute {
   static const home = '/homescreen';
   static const membership = '/membership';
   static const bookDetail = '/book-detail';
+  static const search = '/search';
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashPage(),
     login: (_) => const Login(),
@@ -33,5 +35,6 @@ class AppRoute {
     home: (_) => Homescreen(),
     membership: (_) => const MembershipPackageScreen(),
     bookDetail: (_) => const BookDetailPage(),
+    search: (_) => const SearchPage(),
   };
 }

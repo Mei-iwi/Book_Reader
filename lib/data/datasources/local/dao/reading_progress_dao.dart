@@ -15,6 +15,13 @@ class ReadingProgressDao {
     String? coverUrl,
   }) async {
     final db = await _appDatabase.database;
+    final safeTotalPage = totalPage <= 0 ? 1 : totalPage;
+    final safeCurrentPage = currentPage.clamp(1, safeTotalPage).toInt();
+    final calculatedPercent = (safeCurrentPage / safeTotalPage) * 100;
+    final safeProgressPercent =
+        progressPercent.isNaN || progressPercent.isInfinite
+        ? calculatedPercent.clamp(0, 100).toDouble()
+        : progressPercent.clamp(0, 100).toDouble();
 
     final existing = await db.query(
       TableNames.readingProgress,
@@ -26,9 +33,9 @@ class ReadingProgressDao {
       'book_id': bookId,
       'book_title': bookTitle,
       'cover_url': coverUrl,
-      'current_page': currentPage,
-      'total_page': totalPage,
-      'progress_percent': progressPercent,
+      'current_page': safeCurrentPage,
+      'total_page': safeTotalPage,
+      'progress_percent': safeProgressPercent,
       'updated_at': DateTime.now().toIso8601String(),
     };
 

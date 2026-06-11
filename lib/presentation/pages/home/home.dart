@@ -1,3 +1,4 @@
+import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/form.dart';
 import 'package:book_reader/core/widgets/ShareWidgetHome/wbook.dart';
@@ -52,9 +53,7 @@ class _Home extends State<Home> {
         title: FormSearch(
           text: 'Search',
           controller: search,
-          func: () {
-            context.read<HomeBookProvider>().searchBooks(search.text);
-          },
+          func: _openSearch,
         ),
         centerTitle: true,
         actions: [
@@ -173,6 +172,14 @@ class _Home extends State<Home> {
         padding: const EdgeInsets.only(left: 10),
         child: _buildBody(provider),
       ),
+    );
+  }
+
+  void _openSearch() {
+    Navigator.pushNamed(
+      context,
+      AppRoute.search,
+      arguments: search.text.trim(),
     );
   }
 }

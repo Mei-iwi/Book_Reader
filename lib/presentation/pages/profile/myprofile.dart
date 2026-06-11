@@ -3,6 +3,7 @@ import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/item.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/wbook.dart';
+import 'package:book_reader/data/datasources/local/dao/bookmark_dao.dart';
 import 'package:book_reader/data/datasources/local/dao/favorite_dao.dart';
 import 'package:book_reader/data/datasources/local/dao/profile_dao.dart';
 import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart';
@@ -29,6 +30,7 @@ class Myprofile extends StatefulWidget {
 class _Myprofile extends State<Myprofile> {
   List<Map<String, dynamic>> _favorites = [];
   List<Map<String, dynamic>> _history = [];
+  Map<String, int> _bookmarkCounts = {};
   Map<String, dynamic>? _localProfile;
   bool _isLoading = true;
 
@@ -43,6 +45,7 @@ class _Myprofile extends State<Myprofile> {
     final db = AppDatabase.instance;
     final favDao = FavoriteDao(db);
     final progDao = ReadingProgressDao(db);
+    final bookmarkDao = BookmarkDao(db);
     final profDao = ProfileDao(db);
 
     final favs = await favDao.getAllFavorites();
@@ -62,10 +65,15 @@ class _Myprofile extends State<Myprofile> {
       hist = await progDao.getRecentProgress(limit: 10);
     }
 
+    final bookmarkCounts = await bookmarkDao.countByBookIds(
+      hist.map((row) => row['book_id']?.toString() ?? ''),
+    );
+
     if (mounted) {
       setState(() {
         _favorites = favs;
         _history = hist;
+        _bookmarkCounts = bookmarkCounts;
         _localProfile = prof;
         _isLoading = false;
       });
@@ -98,10 +106,9 @@ class _Myprofile extends State<Myprofile> {
 
     final downloadCount = libraryProvider.offlineBooks.length;
     final readingCount = _history.length;
-    final readCount = _history.where((h) {
-      final percent = h['progress_percent'];
-      return percent is num && percent >= 100;
-    }).length;
+    final readCount = _history
+        .where((history) => _historyProgressPercent(history) >= 100)
+        .length;
 
     return Scaffold(
       appBar: AppBar(
@@ -354,9 +361,7 @@ class _Myprofile extends State<Myprofile> {
                                     bookId,
                                     libraryProvider.offlineBooks,
                                   );
-                                  final percent =
-                                      (hist['progress_percent'] ?? 0)
-                                          .toDouble();
+                                  final percent = _historyProgressPercent(hist);
                                   final historyTitle =
                                       hist['book_title']?.toString().trim() ??
                                       '';
@@ -385,20 +390,18 @@ class _Myprofile extends State<Myprofile> {
                                     ),
                                     onDelete: () =>
                                         _deleteReadingProgress(context, bookId),
+                                    bookmarkCount: _bookmarkCounts[bookId] ?? 0,
                                     action: percent >= 30
                                         ? Align(
                                             alignment: Alignment.centerLeft,
                                             child: OutlinedButton.icon(
-                                                  onPressed: () =>
-                                                      _openReviewPage(
-                                                        context,
-                                                        bookId,
-                                                        displayTitle,
-                                                        displayCover,
-                                                        book?.authors
-                                                                .join(', ') ??
-                                                            '',
-                                                      ),
+                                              onPressed: () => _openReviewPage(
+                                                context,
+                                                bookId,
+                                                displayTitle,
+                                                displayCover,
+                                                book?.authors.join(', ') ?? '',
+                                              ),
                                               icon: const Icon(
                                                 Icons.star_outline,
                                                 size: 18,
@@ -437,6 +440,22 @@ class _Myprofile extends State<Myprofile> {
     return null;
   }
 
+  double _historyProgressPercent(Map<String, dynamic> history) {
+    final storedPercent = (history['progress_percent'] as num?)?.toDouble();
+    final currentPage = (history['current_page'] as num?)?.toInt() ?? 0;
+    final totalPage = (history['total_page'] as num?)?.toInt() ?? 0;
+
+    if (storedPercent != null && storedPercent > 0) {
+      return storedPercent.clamp(0, 100).toDouble();
+    }
+
+    if (currentPage > 0 && totalPage > 0) {
+      return ((currentPage / totalPage) * 100).clamp(0, 100).toDouble();
+    }
+
+    return (storedPercent ?? 0).clamp(0, 100).toDouble();
+  }
+
   Future<void> _enrichHistoryRows(
     List<Map<String, dynamic>> rows,
     ReadingProgressDao progDao,
@@ -448,8 +467,7 @@ class _Myprofile extends State<Myprofile> {
       final bookId = row['book_id']?.toString() ?? '';
       if (bookId.isEmpty) continue;
 
-      final hasTitle =
-          row['book_title']?.toString().trim().isNotEmpty == true;
+      final hasTitle = row['book_title']?.toString().trim().isNotEmpty == true;
       final hasCover = row['cover_url']?.toString().trim().isNotEmpty == true;
       if (hasTitle && hasCover) continue;
 
@@ -531,9 +549,7 @@ class _Myprofile extends State<Myprofile> {
               history['book_title']?.toString() ??
               'Sách đang đọc',
           coverUrl:
-              book?.thumbnailUrl ??
-              history['cover_url']?.toString() ??
-              '',
+              book?.thumbnailUrl ?? history['cover_url']?.toString() ?? '',
           bookId: bookId,
           userId: context.read<AuthProvider>().currentUser?.userId,
           localFilePath: book?.localFilePath,
