@@ -18,9 +18,12 @@ class _SplashPage extends State<SplashPage> {
       if (!mounted) return;
       final loggedIn = await context.read<AuthProvider>().loadSession();
       if (!mounted) return;
+      final authProvider = context.read<AuthProvider>();
       Navigator.pushReplacementNamed(
         context,
-        loggedIn ? AppRoute.home : AppRoute.login,
+        loggedIn
+            ? (authProvider.isAdmin ? AppRoute.adminDashboard : AppRoute.home)
+            : AppRoute.login,
       );
     });
   }

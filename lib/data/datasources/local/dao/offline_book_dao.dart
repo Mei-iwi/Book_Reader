@@ -9,16 +9,21 @@ class OfflineBookDao {
 
   OfflineBookDao(this._appDatabase);
 
-  Future<void> insertOrUpdateBook(BookModel book) async {
+  int _scope(int? userId) => userId ?? 0;
+
+  Future<void> insertOrUpdateBook(BookModel book, {int? userId}) async {
     final db = await _appDatabase.database;
+    final data = book.toSqliteMap();
+    data['user_id'] = _scope(userId);
 
     await db.insert(
       TableNames.offlineBooks,
-      book.toSqliteMap(),
+      data,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    debugPrint('===== ĐÃ LƯU SÁCH OFFLINE =====');
+    debugPrint('===== DA LUU SACH OFFLINE =====');
+    debugPrint('User ID: ${_scope(userId)}');
     debugPrint('ID: ${book.id}');
     debugPrint('Title: ${book.title}');
     debugPrint('Authors: ${book.authors.join(', ')}');
@@ -27,30 +32,35 @@ class OfflineBookDao {
     debugPrint('Is downloaded: ${book.isDownloaded}');
 
     final count = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM offline_books'),
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM offline_books WHERE user_id = ?',
+        [_scope(userId)],
+      ),
     );
 
-    debugPrint('Tổng số sách trong offline_books: $count');
+    debugPrint('Tong so sach offline cua user: $count');
   }
 
-  Future<List<BookModel>> getOfflineBooks() async {
+  Future<List<BookModel>> getOfflineBooks({int? userId}) async {
     final db = await _appDatabase.database;
 
     final maps = await db.query(
       TableNames.offlineBooks,
+      where: 'user_id = ?',
+      whereArgs: [_scope(userId)],
       orderBy: 'downloaded_at DESC',
     );
 
-    return maps.map((map) => BookModel.fromSqlite((map))).toList();
+    return maps.map((map) => BookModel.fromSqlite(map)).toList();
   }
 
-  Future<BookModel?> getBookById(String bookId) async {
+  Future<BookModel?> getBookById(String bookId, {int? userId}) async {
     final db = await _appDatabase.database;
 
     final maps = await db.query(
       TableNames.offlineBooks,
-      where: 'id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND id = ?',
+      whereArgs: [_scope(userId), bookId],
       limit: 1,
     );
 
@@ -59,19 +69,20 @@ class OfflineBookDao {
     return BookModel.fromSqlite(maps.first);
   }
 
-  Future<void> deleteOfflineBook(String bookId) async {
+  Future<void> deleteOfflineBook(String bookId, {int? userId}) async {
     final db = await _appDatabase.database;
 
     await db.delete(
       TableNames.offlineBooks,
-      where: 'id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND id = ?',
+      whereArgs: [_scope(userId), bookId],
     );
   }
 
   Future<void> updateDownloadedFilePath({
     required String bookId,
     required String localFilePath,
+    int? userId,
   }) async {
     final db = await _appDatabase.database;
 
@@ -83,8 +94,8 @@ class OfflineBookDao {
         'downloaded_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       },
-      where: 'id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND id = ?',
+      whereArgs: [_scope(userId), bookId],
     );
   }
 }

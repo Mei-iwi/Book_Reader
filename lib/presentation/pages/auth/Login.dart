@@ -58,6 +58,14 @@ class _Login extends State<Login> {
               Navigator.pushReplacementNamed(context, AppRoute.signup);
             },
           ),
+          SizedBox(height: 14),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, AppRoute.adminLogin);
+            },
+            icon: const Icon(Icons.admin_panel_settings),
+            label: const Text('Admin Login'),
+          ),
         ],
       ),
       bottomNavigationBar: Padding(

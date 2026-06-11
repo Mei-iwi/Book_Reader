@@ -6,21 +6,25 @@ class FavoriteDao {
 
   FavoriteDao(this._appDatabase);
 
+  int _scope(int? userId) => userId ?? 0;
+
   Future<void> addFavorite({
     required String bookId,
     required String title,
     String? author,
     String? coverUrl,
+    int? userId,
   }) async {
     final db = await _appDatabase.database;
     final existing = await db.query(
       TableNames.favorites,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
     );
 
     if (existing.isEmpty) {
       await db.insert(TableNames.favorites, {
+        'user_id': _scope(userId),
         'book_id': bookId,
         'title': title,
         'author': author ?? 'Unknown',
@@ -30,27 +34,32 @@ class FavoriteDao {
     }
   }
 
-  Future<void> removeFavorite(String bookId) async {
+  Future<void> removeFavorite(String bookId, {int? userId}) async {
     final db = await _appDatabase.database;
     await db.delete(
       TableNames.favorites,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
     );
   }
 
-  Future<bool> isFavorite(String bookId) async {
+  Future<bool> isFavorite(String bookId, {int? userId}) async {
     final db = await _appDatabase.database;
     final maps = await db.query(
       TableNames.favorites,
-      where: 'book_id = ?',
-      whereArgs: [bookId],
+      where: 'user_id = ? AND book_id = ?',
+      whereArgs: [_scope(userId), bookId],
     );
     return maps.isNotEmpty;
   }
 
-  Future<List<Map<String, dynamic>>> getAllFavorites() async {
+  Future<List<Map<String, dynamic>>> getAllFavorites({int? userId}) async {
     final db = await _appDatabase.database;
-    return await db.query(TableNames.favorites, orderBy: 'created_at DESC');
+    return await db.query(
+      TableNames.favorites,
+      where: 'user_id = ?',
+      whereArgs: [_scope(userId)],
+      orderBy: 'created_at DESC',
+    );
   }
 }

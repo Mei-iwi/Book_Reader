@@ -13,6 +13,7 @@ class HomeBookProvider extends ChangeNotifier {
   bool isLoading = false;
   bool _homeLoaded = false;
   DateTime? _lastHomeLoadAt;
+  int? _loadedUserId;
   String? errMessage;
 
   List<Book> continueBooks = [];
@@ -22,12 +23,13 @@ class HomeBookProvider extends ChangeNotifier {
   List<Book> searchResults = [];
   String activeSearchKeyword = '';
 
-  Future<void> loadHomeData({bool forceRefresh = false}) async {
+  Future<void> loadHomeData({bool forceRefresh = false, int? userId}) async {
     final cacheStillFresh =
         _lastHomeLoadAt != null &&
         DateTime.now().difference(_lastHomeLoadAt!) < _cacheDuration;
+    final sameUser = _loadedUserId == userId;
 
-    if (_homeLoaded && cacheStillFresh && !forceRefresh) {
+    if (_homeLoaded && cacheStillFresh && sameUser && !forceRefresh) {
       debugPrint('Home data already loaded. Skip API call.');
       return;
     }
@@ -37,27 +39,23 @@ class HomeBookProvider extends ChangeNotifier {
       errMessage = null;
       notifyListeners();
 
-      final savedBooksFuture = _bookRepository.getOfflineBooks();
-      final backendBooksFuture = _loadBackendBooks();
-
-      final savedBooks = await savedBooksFuture;
-      final continueReadingBooksFuture = _loadContinueBooks(savedBooks);
-      final backendBooks = await backendBooksFuture;
+      final savedBooks = await _bookRepository.getOfflineBooks(userId: userId);
+      final continueReadingBooksFuture = _loadContinueBooks(
+        savedBooks,
+        userId: userId,
+      );
       final continueReadingBooks = await continueReadingBooksFuture;
 
       continueBooks = continueReadingBooks;
       libraryBooks = savedBooks.take(6).toList();
-      recommendationSections = {
-        'Backend Books': backendBooks.take(10).toList(),
-      };
-      recommendationBooks = recommendationSections.values
-          .expand((books) => books)
-          .toList();
+      recommendationSections = {};
+      recommendationBooks = [];
       searchResults = [];
       activeSearchKeyword = '';
 
       _homeLoaded = true;
       _lastHomeLoadAt = DateTime.now();
+      _loadedUserId = userId;
       isLoading = false;
       notifyListeners();
 
@@ -77,7 +75,6 @@ class HomeBookProvider extends ChangeNotifier {
       ]);
 
       recommendationSections = {
-        'Backend Books': backendBooks.take(10).toList(),
         'Free Fiction': recommendationResults[0].take(5).toList(),
         'Free Technology': recommendationResults[1].take(5).toList(),
         'Free Science': recommendationResults[2].take(5).toList(),
@@ -101,15 +98,6 @@ class HomeBookProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
       notifyListeners();
-    }
-  }
-
-  Future<List<Book>> _loadBackendBooks() async {
-    try {
-      return await _bookRepository.getBackendBooks(pageSize: 10);
-    } catch (e) {
-      debugPrint('LOAD BACKEND BOOKS ERROR: $e');
-      return [];
     }
   }
 
@@ -150,13 +138,13 @@ class HomeBookProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> saveBookOffline(Book book) async {
+  Future<void> saveBookOffline(Book book, {int? userId}) async {
     try {
       debugPrint('===== SAVE BOOK OFFLINE =====');
       debugPrint('Book ID: ${book.id}');
       debugPrint('Title: ${book.title}');
 
-      await _bookRepository.saveBookOffline(book);
+      await _bookRepository.saveBookOffline(book, userId: userId);
       if (!libraryBooks.any((item) => item.id == book.id)) {
         libraryBooks = [book, ...libraryBooks].take(6).toList();
       }
@@ -175,6 +163,7 @@ class HomeBookProvider extends ChangeNotifier {
   void resetHomeData() {
     _homeLoaded = false;
     _lastHomeLoadAt = null;
+    _loadedUserId = null;
     continueBooks.clear();
     libraryBooks.clear();
     recommendationBooks.clear();
@@ -208,10 +197,13 @@ class HomeBookProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<Book>> _loadContinueBooks(List<Book> savedBooks) async {
+  Future<List<Book>> _loadContinueBooks(
+    List<Book> savedBooks, {
+    int? userId,
+  }) async {
     final progressRows = await ReadingProgressDao(
       AppDatabase.instance,
-    ).getContinueProgress(limit: 5);
+    ).getContinueProgress(limit: 5, userId: userId);
     if (progressRows.isEmpty) return [];
 
     final savedById = {for (final book in savedBooks) book.id: book};
@@ -257,10 +249,10 @@ class HomeBookProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshLocalData() async {
+  Future<void> refreshLocalData({int? userId}) async {
     try {
-      final savedBooks = await _bookRepository.getOfflineBooks();
-      continueBooks = await _loadContinueBooks(savedBooks);
+      final savedBooks = await _bookRepository.getOfflineBooks(userId: userId);
+      continueBooks = await _loadContinueBooks(savedBooks, userId: userId);
       libraryBooks = savedBooks.take(6).toList();
       notifyListeners();
     } catch (e) {

@@ -131,9 +131,8 @@ class ApiClient {
       throw Exception('Dữ liệu backend trả về không hợp lệ.');
     }
 
-    final decoded = response.body.trim().isEmpty
-        ? null
-        : jsonDecode(response.body);
+    final responseText = response.body.trim();
+    final decoded = responseText.isEmpty ? null : _tryDecodeJson(responseText);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_extractMessage(decoded, response.statusCode));
@@ -159,6 +158,17 @@ class ApiClient {
           decoded['title']?.toString() ??
           'Api error: $statusCode';
     }
+    if (decoded is String && decoded.trim().isNotEmpty) {
+      return decoded.trim();
+    }
     return 'Api error: $statusCode';
+  }
+
+  dynamic _tryDecodeJson(String responseText) {
+    try {
+      return jsonDecode(responseText);
+    } on FormatException {
+      return responseText;
+    }
   }
 }

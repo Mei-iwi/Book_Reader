@@ -37,7 +37,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   Future<void> _checkFavorite() async {
     if (_bookId.isEmpty) return;
-    final isFav = await FavoriteDao(AppDatabase.instance).isFavorite(_bookId);
+    final userId = context.read<AuthProvider>().currentUser?.userId;
+    final isFav = await FavoriteDao(
+      AppDatabase.instance,
+    ).isFavorite(_bookId, userId: userId);
     if (!mounted) return;
     setState(() {
       _isFavorite = isFav;
@@ -46,14 +49,16 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   Future<void> _toggleFavorite(Book book) async {
     final dao = FavoriteDao(AppDatabase.instance);
+    final userId = context.read<AuthProvider>().currentUser?.userId;
     if (_isFavorite) {
-      await dao.removeFavorite(book.id);
+      await dao.removeFavorite(book.id, userId: userId);
     } else {
       await dao.addFavorite(
         bookId: book.id,
         title: book.title,
         author: book.authors.isNotEmpty ? book.authors.first : 'Unknown',
         coverUrl: book.thumbnailUrl,
+        userId: userId,
       );
     }
 
@@ -266,7 +271,10 @@ class _BookDetailContent extends StatelessWidget {
     final libraryProvider = context.read<LibraryProvider>();
 
     try {
-      await context.read<BookRepository>().saveBookOffline(book);
+      await context.read<BookRepository>().saveBookOffline(
+        book,
+        userId: userId,
+      );
       if (userId != null) {
         try {
           await libraryProvider.addRemoteBook(book, userId: userId);
@@ -314,9 +322,12 @@ class _BookDetailContent extends StatelessWidget {
       );
 
       try {
-        localFilePath = await context.read<BookRepository>().cacheReadableText(
-          book,
-        );
+        localFilePath = await context
+            .read<BookRepository>()
+            .cacheReadableText(
+              book,
+              userId: context.read<AuthProvider>().currentUser?.userId,
+            );
       } catch (e) {
         if (context.mounted) {
           Navigator.of(context, rootNavigator: true).pop();
@@ -333,8 +344,11 @@ class _BookDetailContent extends StatelessWidget {
 
     if (!context.mounted) return;
     try {
-      await context.read<BookRepository>().saveBookMetadataOffline(book);
       final userId = context.read<AuthProvider>().currentUser?.userId;
+      await context.read<BookRepository>().saveBookMetadataOffline(
+        book,
+        userId: userId,
+      );
       await context.read<LibraryProvider>().loadOfflineBooks(userId: userId);
     } catch (_) {}
 

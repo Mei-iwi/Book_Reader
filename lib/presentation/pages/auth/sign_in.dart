@@ -40,7 +40,10 @@ class _Signin extends State<Signin> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.pushReplacementNamed(context, AppRoute.home);
+      Navigator.pushReplacementNamed(
+        context,
+        authProvider.isAdmin ? AppRoute.adminDashboard : AppRoute.home,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(authProvider.errorMessage ?? 'Login failed')),

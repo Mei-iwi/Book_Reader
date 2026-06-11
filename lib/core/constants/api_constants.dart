@@ -9,6 +9,12 @@ class ApiConstants {
   static const String authLogin = '/auth/login';
   static const String authRegister = '/auth/register';
   static const String authMe = '/auth/me';
+  static const String authRequestPasswordReset =
+      '/auth/request-password-reset';
+  static const String authVerifyPasswordResetCode =
+      '/auth/verify-password-reset-code';
+  static const String authResetPassword = '/auth/reset-password';
+  static const String authAdminUsers = '/auth/admin/users';
   static const String books = '/books';
   static const String googleBooksSearch = '/books/google/search';
   static const String library = '/library';

@@ -1,10 +1,13 @@
 using BookReader.Api.Data;
+using BookReader.Api.Entities;
 using BookReader.Api.Helpers;
 using BookReader.Api.Repositories.Implementations;
 using BookReader.Api.Repositories.Interfaces;
 using BookReader.Api.Services.Implementations;
 using BookReader.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+
+LoadDotEnv();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +65,8 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+await SeedAdminAsync(app.Services);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -77,3 +82,83 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static async Task SeedAdminAsync(IServiceProvider services)
+{
+    var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL")?.Trim();
+    var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD")?.Trim();
+
+    if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+    {
+        return;
+    }
+
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<BookReaderDbContext>();
+    var existingAdmin = await dbContext.AppUsers.FirstOrDefaultAsync(
+        user => user.Email == adminEmail);
+
+    if (existingAdmin != null)
+    {
+        if (!string.Equals(existingAdmin.Role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            !existingAdmin.IsActive)
+        {
+            existingAdmin.Role = "Admin";
+            existingAdmin.IsActive = true;
+            existingAdmin.UpdatedAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync();
+        }
+
+        return;
+    }
+
+    dbContext.AppUsers.Add(new AppUser
+    {
+        FullName = "Book Reader Admin",
+        Email = adminEmail,
+        PasswordHash = PasswordHasher.Hash(adminPassword),
+        Role = "Admin",
+        IsActive = true,
+        CreatedAt = DateTime.UtcNow
+    });
+    await dbContext.SaveChangesAsync();
+}
+
+static void LoadDotEnv()
+{
+    var candidates = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+        Path.Combine(AppContext.BaseDirectory, ".env")
+    };
+
+    var envPath = candidates.FirstOrDefault(File.Exists);
+    if (envPath == null)
+    {
+        return;
+    }
+
+    foreach (var rawLine in File.ReadAllLines(envPath))
+    {
+        var line = rawLine.Trim();
+        if (line.Length == 0 || line.StartsWith('#'))
+        {
+            continue;
+        }
+
+        var separatorIndex = line.IndexOf('=');
+        if (separatorIndex <= 0)
+        {
+            continue;
+        }
+
+        var key = line[..separatorIndex].Trim();
+        var value = line[(separatorIndex + 1)..].Trim().Trim('"');
+        if (key.Length == 0)
+        {
+            continue;
+        }
+
+        Environment.SetEnvironmentVariable(key, value);
+    }
+}
