@@ -1,7 +1,9 @@
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/data/datasources/local/dao/book_review_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class BookReviewPage extends StatefulWidget {
   final String bookId;
@@ -64,6 +66,7 @@ class _BookReviewPageState extends State<BookReviewPage> {
 
     if (!mounted) return;
     setState(() => _isSaving = false);
+    context.read<ProfileRefreshProvider>().requestRefresh();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Đã lưu đánh giá sách')));

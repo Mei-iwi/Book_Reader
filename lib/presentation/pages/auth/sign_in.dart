@@ -47,7 +47,7 @@ class _Signin extends State<Signin> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.errorMessage ?? 'Login failed')),
+        SnackBar(content: Text(authProvider.errorMessage ?? 'Đăng nhập thất bại')),
       );
     }
   }
@@ -92,7 +92,7 @@ class _Signin extends State<Signin> {
                       );
                     },
                     child: const Text(
-                      'Forget Password',
+                      'Quên mật khẩu',
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),
@@ -109,7 +109,7 @@ class _Signin extends State<Signin> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text(
-                    "Don't have a account?",
+                    "Chưa có tài khoản?",
                     style: TextStyle(color: Colors.grey),
                   ),
                   TextButton(
@@ -117,7 +117,7 @@ class _Signin extends State<Signin> {
                       Navigator.pushReplacementNamed(context, AppRoute.signup);
                     },
                     child: const Text(
-                      'Sign up',
+                      'Đăng ký',
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),

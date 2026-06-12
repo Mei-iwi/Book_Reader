@@ -31,7 +31,7 @@ class _Forgotpassword extends State<Forgotpassword> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ma xac thuc da duoc gui den $email')),
+        SnackBar(content: Text('Mã xác thực đã được gửi đến $email')),
       );
       Navigator.pushReplacementNamed(
         context,
@@ -43,7 +43,7 @@ class _Forgotpassword extends State<Forgotpassword> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(authProvider.errorMessage ?? 'Khong the gui ma xac thuc'),
+        content: Text(authProvider.errorMessage ?? 'Không thể gửi mã xác thực'),
       ),
     );
   }
@@ -82,7 +82,7 @@ class _Forgotpassword extends State<Forgotpassword> {
                     return CircularProgressIndicator();
                   }
 
-                  return buttonFull(text: 'Send', func: _sendResetCode);
+                  return buttonFull(text: 'Gửi', func: _sendResetCode);
                 },
               ),
               SizedBox(height: 10),
@@ -91,13 +91,13 @@ class _Forgotpassword extends State<Forgotpassword> {
                   Navigator.pushReplacementNamed(context, AppRoute.signin);
                 },
                 child: Text(
-                  "Back to Sign in",
+                  "Quay lại đăng nhập",
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
               SizedBox(height: 36),
               button(
-                text: 'Sign Up',
+                text: 'Đăng ký',
                 func: () {
                   Navigator.pushReplacementNamed(context, AppRoute.signup);
                 },

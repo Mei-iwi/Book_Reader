@@ -40,7 +40,7 @@ class _NewPassword extends State<NewPassword> {
     final email = arguments['email'] ?? '';
     final code = arguments['code'] ?? '';
     if (email.isEmpty || code.isEmpty) {
-      _showMessage('Thong tin xac thuc khong hop le. Vui long thuc hien lai.');
+      _showMessage('Thông tin xác thực không hợp lệ. Vui lòng thực hiện lại.');
       Navigator.pushReplacementNamed(context, AppRoute.fotgotpassword);
       return;
     }
@@ -55,7 +55,7 @@ class _NewPassword extends State<NewPassword> {
     if (!mounted) return;
 
     if (!success) {
-      _showMessage(authProvider.errorMessage ?? 'Khong the cap nhat mat khau');
+      _showMessage(authProvider.errorMessage ?? 'Không thể cập nhật mật khẩu');
       return;
     }
 
@@ -67,7 +67,7 @@ class _NewPassword extends State<NewPassword> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         content: Text(
-          "Mat khau cua ban da duoc cap nhat. Vui long dang nhap lai.",
+          "Mật khẩu của bạn đã được cập nhật. Vui lòng đăng nhập lại.",
         ),
         actions: [
           TextButton(

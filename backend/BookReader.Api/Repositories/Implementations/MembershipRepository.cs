@@ -31,18 +31,34 @@ public class MembershipRepository : IMembershipRepository
     {
         return await _context.UserMemberships
             .Include(x => x.MembershipPackage)
-            .Where(x => x.UserId == userId && x.Status == "Active")
+            .Where(x => x.UserId == userId && x.Status == "Active" && x.EndDate >= DateTime.UtcNow)
             .OrderByDescending(x => x.EndDate)
             .FirstOrDefaultAsync();
     }
 
     public async Task<UserMembership> SubscribeAsync(UserMembership membership)
     {
-        var currentPlans = await _context.UserMemberships
+        var currentPlan = await _context.UserMemberships
+            .Include(x => x.MembershipPackage)
+            .Where(x => x.UserId == membership.UserId && x.Status == "Active" && x.EndDate >= DateTime.UtcNow)
+            .OrderByDescending(x => x.EndDate)
+            .FirstOrDefaultAsync();
+
+        if (currentPlan != null)
+        {
+            var extraDays = (membership.EndDate - membership.StartDate).Days;
+            currentPlan.MembershipPackageId = membership.MembershipPackageId;
+            currentPlan.EndDate = currentPlan.EndDate.AddDays(extraDays);
+            await _context.SaveChangesAsync();
+            await _context.Entry(currentPlan).Reference(x => x.MembershipPackage).LoadAsync();
+            return currentPlan;
+        }
+
+        var oldPlans = await _context.UserMemberships
             .Where(x => x.UserId == membership.UserId && x.Status == "Active")
             .ToListAsync();
 
-        foreach (var plan in currentPlans)
+        foreach (var plan in oldPlans)
         {
             plan.Status = "Expired";
         }

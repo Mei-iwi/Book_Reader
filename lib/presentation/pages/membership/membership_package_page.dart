@@ -45,7 +45,7 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
     if (userId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Vui long dang nhap lai.')));
+      ).showSnackBar(const SnackBar(content: Text('Vui lòng đăng nhập lại.')));
       return;
     }
 
@@ -68,8 +68,8 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
       SnackBar(
         content: Text(
           success
-              ? 'Subscribe success'
-              : provider.errorMessage ?? 'Subscribe failed',
+              ? 'Đăng ký hội viên thành công'
+              : provider.errorMessage ?? 'Đăng ký hội viên thất bại',
         ),
       ),
     );
@@ -101,7 +101,7 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
         centerTitle: true,
       ),
       body: _buildBody(provider),
-      bottomNavigationBar: _buildBuyButton(provider.packages),
+      bottomNavigationBar: _buildBuyButton(provider),
     );
   }
 
@@ -129,7 +129,9 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _buildUserInfoCard(provider.currentPlan),
+          _buildUserInfoCard(provider),
+          const SizedBox(height: 16),
+          _buildBenefitCard(provider),
           const SizedBox(height: 24),
           for (var i = 0; i < provider.packages.length; i++) ...[
             PackageCard(
@@ -144,7 +146,8 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
     );
   }
 
-  Widget _buildUserInfoCard(UserMembershipModel? currentPlan) {
+  Widget _buildUserInfoCard(MembershipProvider provider) {
+    final currentPlan = provider.currentPlan;
     final endDate = currentPlan?.endDate;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -164,25 +167,41 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  currentPlan?.packageName.isNotEmpty == true
-                      ? currentPlan!.packageName
-                      : 'Member',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        currentPlan?.packageName.isNotEmpty == true
+                            ? currentPlan!.packageName
+                            : 'Độc giả miễn phí',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    _PlanBadge(isActive: provider.hasActivePlan),
+                  ],
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  currentPlan == null
-                      ? 'MEMBER ACCOUNT'
-                      : 'ACTIVE UNTIL ${endDate == null ? 'N/A' : '${endDate.day}/${endDate.month}/${endDate.year}'}',
-                  style: TextStyle(
+                  provider.hasActivePlan
+                      ? 'Còn ${provider.remainingDays} ngày - đến ${endDate == null ? 'N/A' : '${endDate.day}/${endDate.month}/${endDate.year}'}'
+                      : 'Tài khoản miễn phí - nâng cấp để mở khóa Reading Pass',
+                  style: const TextStyle(
                     color: Colors.cyanAccent,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                LinearProgressIndicator(
+                  value: provider.hasActivePlan ? provider.planProgress : 0,
+                  minHeight: 6,
+                  backgroundColor: Colors.white24,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Colors.cyanAccent,
                   ),
                 ),
               ],
@@ -193,7 +212,56 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
     );
   }
 
-  Widget _buildBuyButton(List<MembershipPackageModel> packages) {
+  Widget _buildBenefitCard(MembershipProvider provider) {
+    final limitText = provider.hasActivePlan
+        ? 'Lưu sách offline không giới hạn'
+        : 'Tài khoản miễn phí lưu tối đa ${MembershipProvider.freeOfflineBookLimit} sách offline';
+    final benefits = [
+      limitText,
+      'Giao diện đọc Premium Focus',
+      'Mua lại gói sẽ cộng thêm ngày sử dụng',
+      'Hiển thị huy hiệu hội viên trong hồ sơ',
+      'Cache gói hội viên để dùng khi mất mạng',
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F8FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD8E9FF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Quyền lợi Reading Pass',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          const SizedBox(height: 10),
+          for (final benefit in benefits)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF00BFA5), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(benefit)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBuyButton(MembershipProvider provider) {
+    final packages = provider.packages;
+    final selectedPackage = packages.isEmpty ? null : packages[_selectedIndex];
+    final isCurrent = provider.currentPlan?.membershipPackageId ==
+        selectedPackage?.id && provider.hasActivePlan;
+
     return Container(
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 30, top: 10),
       decoration: BoxDecoration(
@@ -212,8 +280,8 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
             ),
             elevation: 0,
           ),
-          child: const Text(
-            'BUY NOW',
+          child: Text(
+            isCurrent ? 'GIA HẠN GÓI' : 'MUA NGAY',
             style: TextStyle(
               color: Colors.black,
               fontSize: 16,
@@ -221,6 +289,31 @@ class _MembershipPackageScreenState extends State<MembershipPackageScreen> {
               letterSpacing: 1.2,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanBadge extends StatelessWidget {
+  final bool isActive;
+
+  const _PlanBadge({required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.greenAccent : Colors.white24,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        isActive ? 'ĐANG DÙNG' : 'MIỄN PHÍ',
+        style: TextStyle(
+          color: isActive ? Colors.black87 : Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );

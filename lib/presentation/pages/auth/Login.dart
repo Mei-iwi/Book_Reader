@@ -29,7 +29,7 @@ class _Login extends State<Login> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Google login failed'),
+          content: Text(authProvider.errorMessage ?? 'Đăng nhập Google thất bại'),
         ),
       );
     }
@@ -48,14 +48,14 @@ class _Login extends State<Login> {
             myBanner(urlBanner: Myimages.myBanner, text: Mytext.chooseLogin),
             SizedBox(height: 44),
             button(
-              text: 'Sign in',
+              text: 'Đăng nhập',
               func: () {
                 Navigator.pushReplacementNamed(context, AppRoute.signin);
               },
             ),
             SizedBox(height: 20),
             buttonFull(
-              text: 'Sign up',
+              text: 'Đăng ký',
               func: () {
                 Navigator.pushReplacementNamed(context, AppRoute.signup);
               },
@@ -66,11 +66,11 @@ class _Login extends State<Login> {
                 Navigator.pushReplacementNamed(context, AppRoute.adminLogin);
               },
               icon: const Icon(Icons.admin_panel_settings),
-              label: const Text('Admin Login'),
+              label: const Text('Đăng nhập quản trị'),
             ),
             SizedBox(height: 28),
             Text(
-              isLoading ? "Signing in..." : "or Sign up with",
+              isLoading ? "Đang đăng nhập..." : "hoặc đăng nhập bằng",
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: theme.colorScheme.onSurfaceVariant,

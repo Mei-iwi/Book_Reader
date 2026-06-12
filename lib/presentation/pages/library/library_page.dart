@@ -7,10 +7,13 @@ import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
 import 'package:book_reader/presentation/pages/communicate/in_app_web_page.dart';
+import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/pages/review/reviewed_books_page.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/news_provider.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -38,6 +41,10 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<LibraryProvider>();
+    final refreshRevision = context.watch<ProfileRefreshProvider>().revision;
+    final likedNewsRevision = _selectedCategory == 'liked_news'
+        ? context.watch<NewsProvider>().likedNewsIds.length
+        : 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -65,7 +72,12 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
         ],
       ),
-      body: _buildBody(provider),
+      body: KeyedSubtree(
+        key: ValueKey(
+          'library-${_selectedCategory}-$refreshRevision-$likedNewsRevision',
+        ),
+        child: _buildBody(provider),
+      ),
     );
   }
 
@@ -332,14 +344,17 @@ class _LibraryPageState extends State<LibraryPage> {
       if (!mounted) return;
       await provider.loadOfflineBooks(userId: userId);
       if (!context.mounted) return;
+      await context.read<HomeBookProvider>().refreshLocalData(userId: userId);
+      if (!context.mounted) return;
+      context.read<ProfileRefreshProvider>().requestRefresh();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Import thành công!')));
+      ).showSnackBar(const SnackBar(content: Text('Nhập sách thành công!')));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi khi import file: $e')));
+      ).showSnackBar(SnackBar(content: Text('Lỗi khi nhập file: $e')));
     }
   }
 }
@@ -450,6 +465,9 @@ class _LibraryBookItem extends StatelessWidget {
     if (shouldDelete != true) return;
     await provider.deleteOfflineBook(book, userId: userId);
     if (!context.mounted) return;
+    await context.read<HomeBookProvider>().refreshLocalData(userId: userId);
+    if (!context.mounted) return;
+    context.read<ProfileRefreshProvider>().requestRefresh();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Đã xóa sách khỏi thư viện')));
