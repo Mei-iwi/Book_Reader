@@ -19,6 +19,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -73,8 +74,12 @@ class Reader extends StatefulWidget {
 class _Reader extends State<Reader> {
   late int newvalue = widget.value;
   late int _textPageCount = widget.total <= 0 ? 1 : widget.total;
+  late int _pdfPageCount = widget.total <= 0 ? 1 : widget.total;
   late Future<List<String>> _pagesFuture;
   late final PageController _pageController;
+  late final PdfViewerController _pdfViewerController;
+  Future<String>? _pdfFilePathFuture;
+  String? _activePdfFilePath;
   late final ReadingProgressDao _readingProgressDao;
   late final BookmarkDao _bookmarkDao;
   late final ReadingProgressApi _readingProgressApi;
@@ -85,7 +90,10 @@ class _Reader extends State<Reader> {
   bool _webHasError = false;
   bool _isOpeningRemoteFile = false;
   bool _autoOpenedRemoteFile = false;
+  bool _isPdfLoaded = false;
+  bool _isRestoringPdfPage = false;
   String? _webErrorMessage;
+  String? _pdfErrorMessage;
   String _readingMode = 'light';
   double _fontScale = 1;
   double _lightLevel = 1;
@@ -107,10 +115,15 @@ class _Reader extends State<Reader> {
   String get _remoteEpubLink => widget.epubDownloadLink?.trim() ?? '';
   bool get _hasRemotePdf => _remotePdfLink.isNotEmpty;
   bool get _hasRemoteEpub => _remoteEpubLink.isNotEmpty;
-  bool get _usesExternalReader =>
-      _hasExternalLocalFile || _hasRemotePdf || _hasRemoteEpub;
+  bool get _shouldUsePdfReader =>
+      !_hasTextContentSource && (_hasLocalPdfFile || _hasRemotePdf);
+  bool get _usesExternalReader => _hasExternalLocalFile || _hasRemoteEpub;
 
   int get _currentTotalPage {
+    if (_shouldUsePdfReader) {
+      return _pdfPageCount <= 0 ? 1 : _pdfPageCount;
+    }
+
     if (_shouldUseWebView || _hasExternalLocalFile || _hasRemoteEpub) {
       return widget.total <= 0 ? 1 : widget.total;
     }
@@ -146,19 +159,34 @@ class _Reader extends State<Reader> {
     return localPath.toLowerCase().endsWith('.txt');
   }
 
-  bool get _hasExternalLocalFile {
+  bool get _hasTextContentSource {
+    final contentText = widget.contentText?.trim() ?? '';
+    final assetPath = widget.assetPath?.trim() ?? '';
+    return contentText.isNotEmpty || assetPath.isNotEmpty || _hasLocalTextFile;
+  }
+
+  bool get _hasLocalPdfFile {
     final localPath = widget.localFilePath?.trim().toLowerCase() ?? '';
-    return localPath.endsWith('.pdf') || localPath.endsWith('.epub');
+    return localPath.endsWith('.pdf');
+  }
+
+  bool get _hasLocalEpubFile {
+    final localPath = widget.localFilePath?.trim().toLowerCase() ?? '';
+    return localPath.endsWith('.epub');
+  }
+
+  bool get _hasExternalLocalFile {
+    return _hasLocalEpubFile;
   }
 
   bool get _shouldUseWebView {
     final localPath = widget.localFilePath?.trim() ?? '';
 
     if (_hasLocalTextFile) return false;
+    if (_shouldUsePdfReader) return false;
 
     // Uu tien doc online/PDF remote ngay trong app neu co link.
     if (_hasOnlineLink) return true;
-    if (_hasRemotePdf) return true;
 
     // Nếu là PDF/EPUB local thì Reader này chưa render trực tiếp.
     // Có thể mở bằng màn PDF/EPUB riêng sau.
@@ -175,17 +203,26 @@ class _Reader extends State<Reader> {
     final appDatabase = AppDatabase.instance;
     final apiClient = ApiClient();
     _pageController = PageController();
+    _pdfViewerController = PdfViewerController();
     _readingProgressDao = ReadingProgressDao(appDatabase);
     _bookmarkDao = BookmarkDao(appDatabase);
     _readingProgressApi = ReadingProgressApi(apiClient);
     _bookmarkApi = BookmarkApi(apiClient);
     _pagesFuture = _loadPages();
+    if (_shouldUsePdfReader) {
+      _pdfFilePathFuture = _resolvePdfFilePath();
+    }
 
     if (_shouldUseWebView) {
       _initWebView();
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_shouldUsePdfReader) {
+        await _loadSavedProgress(clampToTotal: widget.total > 0);
+        return;
+      }
+
       if (_shouldUseWebView || _hasExternalLocalFile || _hasRemoteEpub) {
         await _loadSavedProgress();
         await _saveProgress();
@@ -199,6 +236,7 @@ class _Reader extends State<Reader> {
     _progressSyncTimer?.cancel();
     _saveProgress(syncNow: true);
     _pageController.dispose();
+    _pdfViewerController.dispose();
     super.dispose();
   }
 
@@ -298,13 +336,16 @@ class _Reader extends State<Reader> {
     final content = await _loadContent();
     final pages = _paginateContent(content);
 
-    if (mounted && !_hasExternalLocalFile && !_shouldUseWebView) {
+    if (mounted &&
+        !_shouldUsePdfReader &&
+        !_hasExternalLocalFile &&
+        !_shouldUseWebView) {
       setState(() {
         _textPageCount = pages.length;
       });
       await _loadSavedProgress(totalPageOverride: pages.length);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _jumpToCurrentTextPage();
+        if (mounted) _jumpToCurrentPage();
       });
       await _saveProgress();
     }
@@ -314,7 +355,9 @@ class _Reader extends State<Reader> {
 
   List<String> _paginateContent(String content) {
     final normalized = _cleanBookText(content);
-    if (normalized.trim().isEmpty || _hasExternalLocalFile) {
+    if (normalized.trim().isEmpty ||
+        _shouldUsePdfReader ||
+        _hasExternalLocalFile) {
       return [normalized];
     }
 
@@ -376,7 +419,10 @@ class _Reader extends State<Reader> {
     return text.trim();
   }
 
-  Future<void> _loadSavedProgress({int? totalPageOverride}) async {
+  Future<void> _loadSavedProgress({
+    int? totalPageOverride,
+    bool clampToTotal = true,
+  }) async {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
 
@@ -389,13 +435,23 @@ class _Reader extends State<Reader> {
     final savedPage =
         (progress['current_page'] as num?)?.toInt() ?? widget.value;
     final totalPage = totalPageOverride ?? _currentTotalPage;
+    final nextPage = clampToTotal
+        ? savedPage.clamp(1, totalPage).toInt()
+        : (savedPage < 1 ? 1 : savedPage);
     setState(() {
-      newvalue = savedPage.clamp(1, totalPage).toInt();
+      newvalue = nextPage;
     });
-    _jumpToCurrentTextPage();
+    _jumpToCurrentPage();
   }
 
-  void _jumpToCurrentTextPage() {
+  void _jumpToCurrentPage() {
+    if (_shouldUsePdfReader) {
+      if (_isPdfLoaded) {
+        _pdfViewerController.jumpToPage(_safeCurrentPage);
+      }
+      return;
+    }
+
     if (!_pageController.hasClients ||
         _shouldUseWebView ||
         _usesExternalReader) {
@@ -408,6 +464,7 @@ class _Reader extends State<Reader> {
   Future<void> _saveProgress({bool syncNow = false}) async {
     final bookId = widget.bookId;
     if (bookId == null || bookId.trim().isEmpty) return;
+    if (_shouldUsePdfReader && !_isPdfLoaded && widget.total <= 0) return;
 
     final totalPage = _currentTotalPage;
     final currentPage = _safeCurrentPage;
@@ -610,7 +667,7 @@ class _Reader extends State<Reader> {
                   ),
                   onTap: () {
                     Navigator.pop(dialogContext);
-                    _goToTextPage(page);
+                    _goToPage(page);
                   },
                 );
               },
@@ -684,17 +741,28 @@ class _Reader extends State<Reader> {
   void _previousPage() {
     final totalPage = _currentTotalPage;
     final nextPage = newvalue - 1 <= 0 ? totalPage : newvalue - 1;
-    _goToTextPage(nextPage);
+    _goToPage(nextPage);
   }
 
   void _nextPage() {
     final totalPage = _currentTotalPage;
     final nextPage = newvalue + 1 > totalPage ? 1 : newvalue + 1;
-    _goToTextPage(nextPage);
+    _goToPage(nextPage);
   }
 
-  void _goToTextPage(int page) {
+  void _goToPage(int page) {
     final targetPage = page.clamp(1, _currentTotalPage).toInt();
+    if (_shouldUsePdfReader) {
+      setState(() {
+        newvalue = targetPage;
+      });
+      if (_isPdfLoaded) {
+        _pdfViewerController.jumpToPage(targetPage);
+      }
+      _saveProgress();
+      return;
+    }
+
     if (_pageController.hasClients &&
         !_shouldUseWebView &&
         !_usesExternalReader) {
@@ -761,8 +829,8 @@ class _Reader extends State<Reader> {
             return AlertDialog(
               title: Text(title),
               content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text('Trang $selectedPage / $totalPage'),
                   Slider(
                     value: selectedPage.toDouble(),
@@ -785,9 +853,7 @@ class _Reader extends State<Reader> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    setState(() {
-                      newvalue = selectedPage;
-                    });
+                    _goToPage(selectedPage);
                     await _saveProgress(syncNow: true);
                     if (!dialogContext.mounted) return;
                     Navigator.pop(dialogContext, true);
@@ -897,7 +963,7 @@ class _Reader extends State<Reader> {
               onPressed: _reloadWebView,
               icon: const Icon(Icons.refresh, color: Colors.blue),
             ),
-          if (_shouldUseWebView || _usesExternalReader)
+          if (_shouldUseWebView || _shouldUsePdfReader || _usesExternalReader)
             IconButton(
               tooltip: 'Cap nhat trang doc',
               onPressed: _showProgressDialog,
@@ -938,7 +1004,9 @@ class _Reader extends State<Reader> {
       ),
       body: _shouldUseWebView
           ? _buildWebReader()
-          : (_hasRemotePdf || _hasRemoteEpub)
+          : _shouldUsePdfReader
+          ? _buildPdfReader()
+          : _hasRemoteEpub
           ? _buildRemoteFileReader()
           : _buildTextReader(),
       bottomNavigationBar: (_shouldUseWebView || _usesExternalReader)
@@ -1028,6 +1096,276 @@ class _Reader extends State<Reader> {
         const SnackBar(content: Text('Không thể mở link đọc sách.')),
       );
     }
+  }
+
+  Future<String> _resolvePdfFilePath() async {
+    final localPath = widget.localFilePath?.trim() ?? '';
+    if (_hasLocalPdfFile) {
+      final file = File(localPath);
+      if (await _isValidPdfFile(file)) return localPath;
+      throw Exception('File PDF tren may khong hop le hoac da bi hong.');
+    }
+
+    final url = _remotePdfLink.replaceFirst('http://', 'https://');
+    if (url.isEmpty) {
+      throw Exception('Khong tim thay link PDF de tai.');
+    }
+
+    final directory = await getApplicationDocumentsDirectory();
+    final safeBookId = (widget.bookId ?? widget.title).replaceAll(
+      RegExp(r'[^a-zA-Z0-9_-]'),
+      '_',
+    );
+    final filePath = p.join(directory.path, 'books', '$safeBookId.pdf');
+    final file = File(filePath);
+    await file.parent.create(recursive: true);
+
+    if (await _isValidPdfFile(file)) return filePath;
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    final tempPath = '$filePath.download';
+    final tempFile = File(tempPath);
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+
+    await Dio().download(
+      url,
+      tempPath,
+      options: Options(
+        followRedirects: true,
+        responseType: ResponseType.bytes,
+        receiveTimeout: const Duration(seconds: 45),
+        sendTimeout: const Duration(seconds: 20),
+      ),
+    );
+
+    if (!await _isValidPdfFile(tempFile)) {
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+      throw Exception('Link PDF khong tra ve file PDF hop le.');
+    }
+
+    await tempFile.rename(filePath);
+    return filePath;
+  }
+
+  Future<bool> _isValidPdfFile(File file) async {
+    if (!await file.exists()) return false;
+    if (await file.length() < 5) return false;
+
+    final header = await file.openRead(0, 5).first;
+    return String.fromCharCodes(header) == '%PDF-';
+  }
+
+  void _retryPdfLoad() {
+    setState(() {
+      _isPdfLoaded = false;
+      _isRestoringPdfPage = false;
+      _pdfErrorMessage = null;
+      _pdfFilePathFuture = _resolvePdfFilePath();
+    });
+  }
+
+  void _onPdfDocumentLoaded(PdfDocumentLoadedDetails details) {
+    final pageCount = details.document.pages.count <= 0
+        ? 1
+        : details.document.pages.count;
+    final targetPage = newvalue.clamp(1, pageCount).toInt();
+
+    setState(() {
+      _pdfPageCount = pageCount;
+      newvalue = targetPage;
+      _isPdfLoaded = true;
+      _isRestoringPdfPage = targetPage > 1;
+      _pdfErrorMessage = null;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pdfViewerController.jumpToPage(targetPage);
+      _isRestoringPdfPage = false;
+      _saveProgress();
+    });
+  }
+
+  void _onPdfPageChanged(PdfPageChangedDetails details) {
+    final page = details.newPageNumber.clamp(1, _currentTotalPage).toInt();
+    if (_isRestoringPdfPage && page != newvalue) return;
+
+    if (newvalue == page) {
+      if (_isRestoringPdfPage) {
+        setState(() {
+          _isRestoringPdfPage = false;
+        });
+        _saveProgress();
+      }
+      return;
+    }
+
+    setState(() {
+      newvalue = page;
+      _isRestoringPdfPage = false;
+    });
+    _saveProgress();
+  }
+
+  void _onPdfDocumentLoadFailed(PdfDocumentLoadFailedDetails details) {
+    if (!mounted) return;
+    unawaited(_deleteActiveRemotePdfCache());
+    setState(() {
+      _isPdfLoaded = false;
+      _isRestoringPdfPage = false;
+      _pdfErrorMessage = details.description;
+    });
+  }
+
+  Widget _buildPdfReader() {
+    if (_pdfErrorMessage != null) {
+      return _buildPdfError(_pdfErrorMessage!);
+    }
+
+    final future = _pdfFilePathFuture;
+    if (future == null) {
+      return const Center(child: Text('Khong tim thay file PDF de doc.'));
+    }
+
+    return FutureBuilder<String>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return _buildPdfLoading();
+        }
+
+        if (snapshot.hasError) {
+          return _buildPdfError(snapshot.error.toString());
+        }
+
+        final pdfPath = snapshot.data?.trim() ?? '';
+        if (pdfPath.isEmpty) {
+          return _buildPdfError('Khong tim thay file PDF de doc.');
+        }
+
+        return _buildPdfFileViewer(pdfPath);
+      },
+    );
+  }
+
+  Widget _buildPdfFileViewer(String pdfPath) {
+    _activePdfFilePath = pdfPath;
+    final lightOverlayColor = _readerLightOverlayColor();
+    final viewer = SfPdfViewer.file(
+      File(pdfPath),
+      key: ValueKey('pdf-file-$pdfPath'),
+      controller: _pdfViewerController,
+      onDocumentLoaded: _onPdfDocumentLoaded,
+      onDocumentLoadFailed: _onPdfDocumentLoadFailed,
+      onPageChanged: _onPdfPageChanged,
+      canShowScrollHead: true,
+      canShowScrollStatus: true,
+    );
+
+    return Stack(
+      children: [
+        Positioned.fill(child: viewer),
+        if (!_isPdfLoaded)
+          const Positioned.fill(
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        if (lightOverlayColor != null)
+          Positioned.fill(
+            child: IgnorePointer(child: ColoredBox(color: lightOverlayColor)),
+          ),
+        Positioned(
+          right: 0,
+          top: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 13),
+            decoration: BoxDecoration(
+              color: Colors.blue[600],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(100),
+                bottomLeft: Radius.circular(100),
+              ),
+            ),
+            child: Text(
+              'Page $_safeCurrentPage of $_currentTotalPage',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Colors.white,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _deleteActiveRemotePdfCache() async {
+    if (_hasLocalPdfFile) return;
+
+    final path = _activePdfFilePath?.trim() ?? '';
+    if (path.isEmpty) return;
+
+    final file = File(path);
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
+  Widget _buildPdfLoading() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(_hasLocalPdfFile ? 'Dang mo PDF...' : 'Dang tai PDF...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPdfError(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.picture_as_pdf, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text('Khong the mo PDF:\n$message', textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _retryPdfLoad,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thu lai'),
+            ),
+            if (_hasOnlineLink)
+              TextButton(
+                onPressed: () => _openOnlineLinkExternal(_onlineLink),
+                child: const Text('Mo ban doc online'),
+              ),
+            if (_hasRemoteEpub)
+              TextButton(
+                onPressed: _isOpeningRemoteFile
+                    ? null
+                    : () => _openRemoteFileExternal(
+                        url: _remoteEpubLink,
+                        extension: 'epub',
+                      ),
+                child: const Text('Mo EPUB'),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildRemoteFileReader() {

@@ -174,17 +174,17 @@ class BookRepositoryImpl implements BookRepository {
       return;
     }
 
-    if (hasEpub) {
-      localFilePath = await _bookFileDownloader.downloadBookFile(
-        bookId: book.id,
-        downloadUrl: book.epubDownloadLink,
-        extension: 'epub',
-      );
-    } else if (hasPdf) {
+    if (hasPdf) {
       localFilePath = await _bookFileDownloader.downloadBookFile(
         bookId: book.id,
         downloadUrl: book.pdfDownloadLink,
         extension: 'pdf',
+      );
+    } else if (hasEpub) {
+      localFilePath = await _bookFileDownloader.downloadBookFile(
+        bookId: book.id,
+        downloadUrl: book.epubDownloadLink,
+        extension: 'epub',
       );
     }
 
@@ -217,9 +217,9 @@ class BookRepositoryImpl implements BookRepository {
       await saveBookMetadataOffline(book, userId: userId);
       return;
     }
-    final downloadUrl = hasEpub ? book.epubDownloadLink : book.pdfDownloadLink;
+    final downloadUrl = hasPdf ? book.pdfDownloadLink : book.epubDownloadLink;
 
-    final extention = hasEpub ? 'epub' : 'pdf';
+    final extention = hasPdf ? 'pdf' : 'epub';
 
     final localPath = await _bookFileDownloader.downloadBookFile(
       bookId: book.id,
@@ -236,10 +236,7 @@ class BookRepositoryImpl implements BookRepository {
 
   @override
   Future<void> saveBookMetadataOffline(Book book, {int? userId}) async {
-    final existing = await _offlineBookDao.getBookById(
-      book.id,
-      userId: userId,
-    );
+    final existing = await _offlineBookDao.getBookById(book.id, userId: userId);
     final bookModel = BookModel.fromEntity(
       book,
       isDownloaded: existing?.isDownloaded ?? false,
