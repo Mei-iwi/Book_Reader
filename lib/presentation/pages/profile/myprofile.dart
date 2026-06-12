@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/templateImage.dart';
 import 'package:book_reader/core/widgets/ShareWidgetProfile/historyreading.dart';
@@ -10,15 +13,17 @@ import 'package:book_reader/data/datasources/local/dao/reading_progress_dao.dart
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
+import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/pages/profile/editprofile.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/pages/review/book_review_page.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/membership_provider.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:book_reader/presentation/state/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 
 class Myprofile extends StatefulWidget {
   const Myprofile({super.key});
@@ -33,6 +38,10 @@ class _Myprofile extends State<Myprofile> {
   Map<String, int> _bookmarkCounts = {};
   Map<String, dynamic>? _localProfile;
   bool _isLoading = true;
+  bool _isRefreshing = false;
+  bool _hasPendingRefresh = false;
+  Timer? _refreshDebounce;
+  ProfileRefreshProvider? _refreshProvider;
 
   @override
   void initState() {
@@ -40,45 +49,96 @@ class _Myprofile extends State<Myprofile> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    final user = context.read<AuthProvider>().currentUser;
-    final db = AppDatabase.instance;
-    final favDao = FavoriteDao(db);
-    final progDao = ReadingProgressDao(db);
-    final bookmarkDao = BookmarkDao(db);
-    final profDao = ProfileDao(db);
-    final userId = user?.userId;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nextProvider = context.read<ProfileRefreshProvider>();
+    if (_refreshProvider == nextProvider) return;
+    _refreshProvider?.removeListener(_handleExternalRefresh);
+    _refreshProvider = nextProvider;
+    _refreshProvider?.addListener(_handleExternalRefresh);
+  }
 
-    final favs = await favDao.getAllFavorites(userId: userId);
-    await progDao.pruneOldProgress(keep: 10, userId: userId);
-    var hist = await progDao.getRecentProgress(limit: 10, userId: userId);
+  @override
+  void dispose() {
+    _refreshDebounce?.cancel();
+    _refreshProvider?.removeListener(_handleExternalRefresh);
+    super.dispose();
+  }
 
-    Map<String, dynamic>? prof;
-    if (user != null) {
-      prof = await profDao.getProfile(user.userId.toString());
+  void _handleExternalRefresh() {
+    if (!mounted) return;
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      _refreshFromSignal();
+    });
+  }
+
+  void _refreshFromSignal() {
+    if (_isRefreshing) {
+      _hasPendingRefresh = true;
+      return;
     }
+    _loadData(showLoading: false);
+  }
 
-    if (mounted) {
-      await context.read<LibraryProvider>().loadOfflineBooks(
+  Future<void> _loadData({bool showLoading = true}) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    try {
+      if (showLoading && mounted) {
+        setState(() => _isLoading = true);
+      }
+
+      final user = context.read<AuthProvider>().currentUser;
+      final db = AppDatabase.instance;
+      final favDao = FavoriteDao(db);
+      final progDao = ReadingProgressDao(db);
+      final bookmarkDao = BookmarkDao(db);
+      final profDao = ProfileDao(db);
+      final userId = user?.userId;
+
+      final favs = await favDao.getAllFavorites(userId: userId);
+      await progDao.pruneOldProgress(keep: 10, userId: userId);
+      var hist = await progDao.getRecentProgress(limit: 10, userId: userId);
+
+      Map<String, dynamic>? prof;
+      if (user != null) {
+        prof = await profDao.getProfile(user.userId.toString());
+      }
+
+      if (mounted) {
+        try {
+          await context.read<MembershipProvider>().loadPackages(userId: userId);
+        } catch (_) {}
+        await context.read<LibraryProvider>().loadOfflineBooks(
+          userId: userId,
+        );
+        await _enrichHistoryRows(hist, progDao, userId: userId);
+        hist = await progDao.getRecentProgress(limit: 10, userId: userId);
+      }
+
+      final bookmarkCounts = await bookmarkDao.countByBookIds(
+        hist.map((row) => row['book_id']?.toString() ?? ''),
         userId: userId,
       );
-      await _enrichHistoryRows(hist, progDao, userId: userId);
-      hist = await progDao.getRecentProgress(limit: 10, userId: userId);
-    }
 
-    final bookmarkCounts = await bookmarkDao.countByBookIds(
-      hist.map((row) => row['book_id']?.toString() ?? ''),
-      userId: userId,
-    );
-
-    if (mounted) {
-      setState(() {
-        _favorites = favs;
-        _history = hist;
-        _bookmarkCounts = bookmarkCounts;
-        _localProfile = prof;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _favorites = favs;
+          _history = hist;
+          _bookmarkCounts = bookmarkCounts;
+          _localProfile = prof;
+          _isLoading = false;
+        });
+      }
+    } finally {
+      _isRefreshing = false;
+      if (_hasPendingRefresh && mounted) {
+        _hasPendingRefresh = false;
+        _loadData(showLoading: false);
+      }
     }
   }
 
@@ -86,6 +146,7 @@ class _Myprofile extends State<Myprofile> {
   Widget build(BuildContext context) {
     final currentUser = context.watch<AuthProvider>().currentUser;
     final libraryProvider = context.watch<LibraryProvider>();
+    final membershipProvider = context.watch<MembershipProvider>();
     final themeProvider = context.watch<ThemeProvider>();
 
     String fullName = 'Người dùng';
@@ -162,12 +223,19 @@ class _Myprofile extends State<Myprofile> {
                 children: [
                   Icon(Icons.workspace_premium, color: Colors.white, size: 16),
                   SizedBox(width: 4),
-                  Text(
-                    'Hội viên',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 88),
+                    child: Text(
+                      membershipProvider.hasActivePlan
+                          ? membershipProvider.currentPlan!.packageName
+                          : 'Hội viên',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -516,6 +584,11 @@ class _Myprofile extends State<Myprofile> {
       userId: context.read<AuthProvider>().currentUser?.userId,
     );
     await _loadData();
+    if (context.mounted) {
+      await context.read<HomeBookProvider>().refreshLocalData(
+        userId: context.read<AuthProvider>().currentUser?.userId,
+      );
+    }
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(

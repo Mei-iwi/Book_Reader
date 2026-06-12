@@ -15,6 +15,47 @@ class MembershipProvider extends ChangeNotifier {
   List<MembershipPackageModel> packages = [];
   UserMembershipModel? currentPlan;
 
+  static const int freeOfflineBookLimit = 3;
+
+  bool get hasActivePlan {
+    final plan = currentPlan;
+    final endDate = plan?.endDate;
+    return plan != null &&
+        plan.status.toLowerCase() == 'active' &&
+        endDate != null &&
+        endDate.isAfter(DateTime.now());
+  }
+
+  int get remainingDays {
+    final endDate = currentPlan?.endDate;
+    if (!hasActivePlan || endDate == null) return 0;
+    return endDate.difference(DateTime.now()).inDays + 1;
+  }
+
+  int get totalPlanDays {
+    final startDate = currentPlan?.startDate;
+    final endDate = currentPlan?.endDate;
+    if (startDate == null || endDate == null) return 0;
+    return endDate.difference(startDate).inDays.clamp(0, 9999).toInt();
+  }
+
+  double get planProgress {
+    final startDate = currentPlan?.startDate;
+    final endDate = currentPlan?.endDate;
+    if (!hasActivePlan || startDate == null || endDate == null) return 0;
+    final total = endDate.difference(startDate).inSeconds;
+    if (total <= 0) return 0;
+    final used = DateTime.now().difference(startDate).inSeconds;
+    return (used / total).clamp(0, 1).toDouble();
+  }
+
+  int? get offlineBookLimit => hasActivePlan ? null : freeOfflineBookLimit;
+
+  bool canSaveOffline(int currentOfflineCount) {
+    final limit = offlineBookLimit;
+    return limit == null || currentOfflineCount < limit;
+  }
+
   Future<void> loadPackages({int? userId}) async {
     try {
       isLoading = true;
@@ -27,6 +68,9 @@ class MembershipProvider extends ChangeNotifier {
             await _loadCachedPlan(userId);
       }
     } catch (e) {
+      if (userId != null) {
+        currentPlan ??= await _loadCachedPlan(userId);
+      }
       errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isLoading = false;

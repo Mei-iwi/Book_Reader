@@ -10,6 +10,7 @@ import 'package:book_reader/presentation/pages/profile/myprofile.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:book_reader/presentation/state/theme_provider.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -319,6 +320,7 @@ Widget _buiderBookSection({
                   );
 
                   if (!context.mounted) return;
+                  context.read<ProfileRefreshProvider>().requestRefresh();
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Đã lưu sách vào thư viện')),
@@ -365,6 +367,8 @@ Future<void> _openReaderFromProgress(BuildContext context, Book book) async {
   await context.read<HomeBookProvider>().refreshLocalData(
     userId: context.read<AuthProvider>().currentUser?.userId,
   );
+  if (!context.mounted) return;
+  context.read<ProfileRefreshProvider>().requestRefresh();
 }
 
 TextStyle style() {

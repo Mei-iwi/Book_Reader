@@ -8,18 +8,23 @@ class AuthScrollView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
+    final hasKeyboard = keyboardBottom > 0;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.only(bottom: keyboardBottom + 24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: child,
-          ),
-        );
-      },
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.only(bottom: keyboardBottom + 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: hasKeyboard ? 0 : constraints.maxHeight,
+              ),
+              child: child,
+            ),
+          );
+        },
+      ),
     );
   }
 }

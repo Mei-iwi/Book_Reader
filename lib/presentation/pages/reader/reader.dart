@@ -11,6 +11,8 @@ import 'package:book_reader/data/datasources/remote/api/reading_progress_api.dar
 import 'package:book_reader/presentation/pages/comment/comments.dart';
 import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/membership_provider.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -482,6 +484,9 @@ class _Reader extends State<Reader> {
 
     if (mounted) {
       await _refreshReadingConsumers();
+      if (mounted) {
+        context.read<ProfileRefreshProvider>().requestRefresh();
+      }
     }
 
     final backendBookId = int.tryParse(bookId);
@@ -592,6 +597,7 @@ class _Reader extends State<Reader> {
     await _saveProgress(syncNow: true);
 
     if (!mounted) return;
+    context.read<ProfileRefreshProvider>().requestRefresh();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Đã lưu bookmark trang $_safeCurrentPage')),
     );
@@ -628,7 +634,7 @@ class _Reader extends State<Reader> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Dong'),
+                child: const Text('Đóng'),
               ),
             ],
           );
@@ -660,6 +666,9 @@ class _Reader extends State<Reader> {
                         id,
                         userId: widget.userId,
                       );
+                      if (mounted) {
+                        context.read<ProfileRefreshProvider>().requestRefresh();
+                      }
                       if (!dialogContext.mounted) return;
                       Navigator.pop(dialogContext);
                       await _showBookmarksDialog();
@@ -676,7 +685,7 @@ class _Reader extends State<Reader> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Dong'),
+              child: const Text('Đóng'),
             ),
           ],
         );
@@ -870,6 +879,13 @@ class _Reader extends State<Reader> {
   }
 
   Future<void> _showReadingModeSheet() async {
+    final membershipProvider = context.read<MembershipProvider>();
+    if (widget.userId != null && membershipProvider.currentPlan == null) {
+      await membershipProvider.loadPackages(userId: widget.userId);
+    }
+    if (!mounted) return;
+    final hasPremium = membershipProvider.hasActivePlan;
+
     await showModalBottomSheet(
       context: context,
       builder: (sheetContext) {
@@ -893,10 +909,25 @@ class _Reader extends State<Reader> {
                       ButtonSegment(value: 'light', label: Text('Trắng')),
                       ButtonSegment(value: 'sepia', label: Text('Giấy')),
                       ButtonSegment(value: 'dark', label: Text('Tối')),
+                      ButtonSegment(
+                        value: 'focus',
+                        label: Text('Focus'),
+                        icon: Icon(Icons.workspace_premium),
+                      ),
                     ],
                     selected: {_readingMode},
                     onSelectionChanged: (values) {
                       final value = values.first;
+                      if (value == 'focus' && !hasPremium) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Premium Focus dành cho hội viên Reading Pass.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                       setSheetState(() => _readingMode = value);
                       setState(() => _readingMode = value);
                     },
@@ -1103,12 +1134,12 @@ class _Reader extends State<Reader> {
     if (_hasLocalPdfFile) {
       final file = File(localPath);
       if (await _isValidPdfFile(file)) return localPath;
-      throw Exception('File PDF tren may khong hop le hoac da bi hong.');
+      throw Exception('File PDF trên máy không hợp lệ hoặc đã bị hỏng.');
     }
 
     final url = _remotePdfLink.replaceFirst('http://', 'https://');
     if (url.isEmpty) {
-      throw Exception('Khong tim thay link PDF de tai.');
+      throw Exception('Không tìm thấy link PDF để tải.');
     }
 
     final directory = await getApplicationDocumentsDirectory();
@@ -1146,7 +1177,7 @@ class _Reader extends State<Reader> {
       if (await tempFile.exists()) {
         await tempFile.delete();
       }
-      throw Exception('Link PDF khong tra ve file PDF hop le.');
+      throw Exception('Link PDF không trả về file PDF hợp lệ.');
     }
 
     await tempFile.rename(filePath);
@@ -1230,7 +1261,7 @@ class _Reader extends State<Reader> {
 
     final future = _pdfFilePathFuture;
     if (future == null) {
-      return const Center(child: Text('Khong tim thay file PDF de doc.'));
+      return const Center(child: Text('Không tìm thấy file PDF để đọc.'));
     }
 
     return FutureBuilder<String>(
@@ -1246,7 +1277,7 @@ class _Reader extends State<Reader> {
 
         final pdfPath = snapshot.data?.trim() ?? '';
         if (pdfPath.isEmpty) {
-          return _buildPdfError('Khong tim thay file PDF de doc.');
+          return _buildPdfError('Không tìm thấy file PDF để đọc.');
         }
 
         return _buildPdfFileViewer(pdfPath);
@@ -1340,17 +1371,17 @@ class _Reader extends State<Reader> {
           children: [
             const Icon(Icons.picture_as_pdf, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text('Khong the mo PDF:\n$message', textAlign: TextAlign.center),
+            Text('Không thể mở PDF:\n$message', textAlign: TextAlign.center),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _retryPdfLoad,
               icon: const Icon(Icons.refresh),
-              label: const Text('Thu lai'),
+              label: const Text('Thử lại'),
             ),
             if (_hasOnlineLink)
               TextButton(
                 onPressed: () => _openOnlineLinkExternal(_onlineLink),
-                child: const Text('Mo ban doc online'),
+                child: const Text('Mở bản đọc online'),
               ),
             if (_hasRemoteEpub)
               TextButton(
@@ -1360,7 +1391,7 @@ class _Reader extends State<Reader> {
                         url: _remoteEpubLink,
                         extension: 'epub',
                       ),
-                child: const Text('Mo EPUB'),
+                child: const Text('Mở EPUB'),
               ),
           ],
         ),
@@ -1695,12 +1726,14 @@ class _Reader extends State<Reader> {
 
   Color _readerBackgroundColor() {
     if (_readingMode == 'dark') return const Color(0xFF151515);
+    if (_readingMode == 'focus') return const Color(0xFF101820);
     if (_readingMode == 'sepia') return const Color(0xFFF4ECD8);
     return Colors.white;
   }
 
   Color _readerTextColor() {
     if (_readingMode == 'dark') return const Color(0xFFEDEDED);
+    if (_readingMode == 'focus') return const Color(0xFFEAF7F2);
     return const Color(0xFF202124);
   }
 

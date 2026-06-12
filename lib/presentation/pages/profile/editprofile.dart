@@ -2,6 +2,7 @@ import 'package:book_reader/data/datasources/local/dao/profile_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/core/utils/validators.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -110,6 +111,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
 
       if (mounted) {
+        context.read<ProfileRefreshProvider>().requestRefresh();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Lưu thông tin thành công!'),

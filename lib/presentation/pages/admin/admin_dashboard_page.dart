@@ -55,16 +55,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete user'),
-        content: Text('Delete ${user.email}? This action cannot be undone.'),
+        title: const Text('Xóa người dùng'),
+        content: Text('Xóa ${user.email}? Hành động này không thể hoàn tác.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Hủy'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('Xóa'),
           ),
         ],
       ),
@@ -380,7 +380,7 @@ class _AdminUserDialogState extends State<_AdminUserDialog> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(authProvider.errorMessage ?? 'Save failed')),
+      SnackBar(content: Text(authProvider.errorMessage ?? 'Lưu thất bại')),
     );
   }
 

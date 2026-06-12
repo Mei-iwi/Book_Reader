@@ -3,9 +3,12 @@ import 'package:book_reader/data/datasources/local/dao/favorite_dao.dart';
 import 'package:book_reader/data/datasources/local/sqlite/app_database.dart';
 import 'package:book_reader/domain/entities/book.dart';
 import 'package:book_reader/domain/repositories/book_repository.dart';
+import 'package:book_reader/presentation/pages/home/home_book_provider.dart';
 import 'package:book_reader/presentation/pages/reader/reader.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
 import 'package:book_reader/presentation/state/library_provider.dart';
+import 'package:book_reader/presentation/state/membership_provider.dart';
+import 'package:book_reader/presentation/state/profile_refresh_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -66,6 +69,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     setState(() {
       _isFavorite = !_isFavorite;
     });
+    context.read<ProfileRefreshProvider>().requestRefresh();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_isFavorite ? 'Đã thêm yêu thích' : 'Đã bỏ yêu thích'),
@@ -269,8 +273,23 @@ class _BookDetailContent extends StatelessWidget {
   Future<void> _downloadBook(BuildContext context) async {
     final userId = context.read<AuthProvider>().currentUser?.userId;
     final libraryProvider = context.read<LibraryProvider>();
+    final membershipProvider = context.read<MembershipProvider>();
 
     try {
+      if (userId != null && membershipProvider.currentPlan == null) {
+        await membershipProvider.loadPackages(userId: userId);
+      }
+      await libraryProvider.refreshLocalBooks(userId: userId);
+      final alreadySaved = libraryProvider.offlineBooks.any(
+        (item) => item.id == book.id,
+      );
+      if (!alreadySaved &&
+          !membershipProvider.canSaveOffline(libraryProvider.offlineBooks.length)) {
+        if (!context.mounted) return;
+        await _showUpgradeDialog(context);
+        return;
+      }
+
       await context.read<BookRepository>().saveBookOffline(
         book,
         userId: userId,
@@ -282,6 +301,9 @@ class _BookDetailContent extends StatelessWidget {
       }
       await libraryProvider.loadOfflineBooks(userId: userId);
       if (!context.mounted) return;
+      await context.read<HomeBookProvider>().refreshLocalData(userId: userId);
+      if (!context.mounted) return;
+      context.read<ProfileRefreshProvider>().requestRefresh();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Đã lưu sách vào thư viện')));
@@ -291,6 +313,31 @@ class _BookDetailContent extends StatelessWidget {
         context,
       ).showSnackBar(SnackBar(content: Text('Không thể tải sách: $e')));
     }
+  }
+
+  Future<void> _showUpgradeDialog(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nâng cấp Reading Pass'),
+        content: const Text(
+          'Tài khoản miễn phí chỉ lưu tối đa 3 sách offline. Hãy nâng cấp hội viên để lưu thêm sách.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Để sau'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.pushNamed(context, '/membership');
+            },
+            child: const Text('Nâng cấp'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _readBook(BuildContext context) async {
@@ -350,6 +397,12 @@ class _BookDetailContent extends StatelessWidget {
         userId: userId,
       );
       await context.read<LibraryProvider>().loadOfflineBooks(userId: userId);
+      if (context.mounted) {
+        await context.read<HomeBookProvider>().refreshLocalData(userId: userId);
+        if (context.mounted) {
+          context.read<ProfileRefreshProvider>().requestRefresh();
+        }
+      }
     } catch (_) {}
 
     if (!context.mounted) return;

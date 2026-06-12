@@ -9,7 +9,7 @@ class AppValidators {
 
   static String? requiredText(String? value, String fieldName) {
     if (value == null || value.trim().isEmpty) {
-      return 'Vui long nhap $fieldName';
+      return 'Vui lòng nhập $fieldName';
     }
     return null;
   }
@@ -18,7 +18,7 @@ class AppValidators {
     final requiredError = requiredText(value, 'email');
     if (requiredError != null) return requiredError;
     if (!_emailRegex.hasMatch(value!.trim())) {
-      return 'Email khong hop le';
+      return 'Email không hợp lệ';
     }
     return null;
   }
@@ -38,7 +38,7 @@ class AppValidators {
     final requiredError = requiredText(value, 'mat khau');
     if (requiredError != null) return requiredError;
     if (value!.length < minLength) {
-      return 'Mat khau phai co it nhat $minLength ky tu';
+      return 'Mật khẩu phải có ít nhất $minLength ký tự';
     }
     return null;
   }
@@ -47,14 +47,14 @@ class AppValidators {
     final requiredError = requiredText(value, 'mat khau xac nhan');
     if (requiredError != null) return requiredError;
     if (value != passwordValue) {
-      return 'Mat khau xac nhan khong khop';
+      return 'Mật khẩu xác nhận không khớp';
     }
     return null;
   }
 
   static String? maxLength(String? value, int max, String fieldName) {
     if (value != null && value.trim().length > max) {
-      return '$fieldName khong duoc qua $max ky tu';
+      return '$fieldName không được quá $max ký tự';
     }
     return null;
   }
@@ -63,7 +63,7 @@ class AppValidators {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
     if (!_phoneRegex.hasMatch(text)) {
-      return 'So dien thoai khong hop le';
+      return 'Số điện thoại không hợp lệ';
     }
     return null;
   }

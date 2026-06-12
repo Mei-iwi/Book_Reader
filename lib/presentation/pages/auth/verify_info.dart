@@ -30,7 +30,7 @@ class _Verifyinfo extends State<Verifyinfo> {
 
     final email = _email;
     if (email.isEmpty) {
-      _showMessage('Khong tim thay email. Vui long thuc hien lai.');
+      _showMessage('Không tìm thấy email. Vui lòng thực hiện lại.');
       Navigator.pushReplacementNamed(context, AppRoute.fotgotpassword);
       return;
     }
@@ -52,13 +52,13 @@ class _Verifyinfo extends State<Verifyinfo> {
       return;
     }
 
-    _showMessage(authProvider.errorMessage ?? 'Ma xac thuc khong hop le');
+    _showMessage(authProvider.errorMessage ?? 'Mã xác thực không hợp lệ');
   }
 
   Future<void> _resendCode() async {
     final email = _email;
     if (email.isEmpty) {
-      _showMessage('Khong tim thay email. Vui long thuc hien lai.');
+      _showMessage('Không tìm thấy email. Vui lòng thực hiện lại.');
       Navigator.pushReplacementNamed(context, AppRoute.fotgotpassword);
       return;
     }
@@ -69,8 +69,8 @@ class _Verifyinfo extends State<Verifyinfo> {
 
     _showMessage(
       success
-          ? 'Ma xac thuc moi da duoc gui'
-          : authProvider.errorMessage ?? 'Khong the gui lai ma xac thuc',
+          ? 'Mã xác thực mới đã được gửi'
+          : authProvider.errorMessage ?? 'Không thể gửi lại mã xác thực',
     );
   }
 
@@ -98,16 +98,16 @@ class _Verifyinfo extends State<Verifyinfo> {
               myBanner(urlBanner: Myimages.myBanner, text: Mytext.verification),
               SizedBox(height: 44),
               FormInput(
-                text: "Enter Verification code",
+                text: "Nhập mã xác thực",
                 icon: Icons.key,
                 isPassword: false,
                 controller: verify,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return "Vui long nhap ma xac thuc";
+                    return "Vui lòng nhập mã xác thực";
                   }
                   if (!RegExp(r'^\d{6}$').hasMatch(v.trim())) {
-                    return "Ma xac thuc gom 6 so";
+                    return "Mã xác thực gồm 6 số";
                   }
                   return null;
                 },

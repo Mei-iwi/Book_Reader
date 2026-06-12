@@ -50,7 +50,7 @@ class _Signup extends State<Signup> {
       Navigator.pushReplacementNamed(context, AppRoute.home);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.errorMessage ?? 'Register failed')),
+        SnackBar(content: Text(authProvider.errorMessage ?? 'Đăng ký thất bại')),
       );
     }
   }
@@ -113,7 +113,7 @@ class _Signup extends State<Signup> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text(
-                    'Already have a account?',
+                  'Đã có tài khoản?',
                     style: TextStyle(color: Colors.grey),
                   ),
                   TextButton(
@@ -121,7 +121,7 @@ class _Signup extends State<Signup> {
                       Navigator.pushReplacementNamed(context, AppRoute.signin);
                     },
                     child: const Text(
-                      'Sign in',
+                      'Đăng nhập',
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),

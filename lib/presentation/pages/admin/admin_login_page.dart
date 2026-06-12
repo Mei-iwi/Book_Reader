@@ -39,7 +39,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     if (!mounted) return;
 
     if (!success) {
-      _showMessage(authProvider.errorMessage ?? 'Admin login failed');
+      _showMessage(authProvider.errorMessage ?? 'Đăng nhập quản trị thất bại');
       return;
     }
 
@@ -107,7 +107,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, AppRoute.login);
                 },
-                child: const Text('Back to user login'),
+                child: const Text('Quay lại đăng nhập người dùng'),
               ),
             ],
           ),
