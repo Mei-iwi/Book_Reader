@@ -5,6 +5,7 @@ class Mytext {
   static const String textSignUp = "Create Account";
   static const String forgotPassword = "Forgot Password";
   static const String vertification = "Vertification";
+  static const String verification = "Verification";
   static const String newPassword = "New Password";
   //static const String fontFamily = ""
 }

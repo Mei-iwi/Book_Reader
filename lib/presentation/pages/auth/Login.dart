@@ -1,6 +1,7 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/auth_scroll_view.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/signup_other.dart';
 import 'package:book_reader/presentation/state/auth_provider.dart';
@@ -41,62 +42,57 @@ class _Login extends State<Login> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          myBanner(urlBanner: Myimages.myBanner, text: Mytext.chooseLogin),
-          SizedBox(height: 70),
-          button(
-            text: 'Sign in',
-            func: () {
-              Navigator.pushReplacementNamed(context, AppRoute.signin);
-            },
-          ),
-          SizedBox(height: 25),
-          buttonFull(
-            text: 'Sign up',
-            func: () {
-              Navigator.pushReplacementNamed(context, AppRoute.signup);
-            },
-          ),
-          SizedBox(height: 14),
-          TextButton.icon(
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, AppRoute.adminLogin);
-            },
-            icon: const Icon(Icons.admin_panel_settings),
-            label: const Text('Admin Login'),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 30),
-        child: BottomAppBar(
-          color: theme.colorScheme.surface,
-          height: 100,
-          child: Column(
-            children: [
-              Text(
-                isLoading ? "Signing in..." : "or Sign up with",
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 15,
+      body: AuthScrollView(
+        child: Column(
+          children: [
+            myBanner(urlBanner: Myimages.myBanner, text: Mytext.chooseLogin),
+            SizedBox(height: 44),
+            button(
+              text: 'Sign in',
+              func: () {
+                Navigator.pushReplacementNamed(context, AppRoute.signin);
+              },
+            ),
+            SizedBox(height: 20),
+            buttonFull(
+              text: 'Sign up',
+              func: () {
+                Navigator.pushReplacementNamed(context, AppRoute.signup);
+              },
+            ),
+            SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, AppRoute.adminLogin);
+              },
+              icon: const Icon(Icons.admin_panel_settings),
+              label: const Text('Admin Login'),
+            ),
+            SizedBox(height: 28),
+            Text(
+              isLoading ? "Signing in..." : "or Sign up with",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 15,
+              ),
+            ),
+            SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                signUpOther(
+                  Myimages.iconGoogle,
+                  isLoading ? () {} : _loginWithGoogle,
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  signUpOther(
-                    Myimages.iconGoogle,
-                    isLoading ? () {} : _loginWithGoogle,
-                  ),
-                  SizedBox(width: 10),
-                  signUpOther(Myimages.iconFaceBook, () {}),
-                  SizedBox(width: 10),
-                  signUpOther(Myimages.iconInstagram, () {}),
-                ],
-              ),
-            ],
-          ),
+                signUpOther(Myimages.iconFaceBook, () {}),
+                signUpOther(Myimages.iconInstagram, () {}),
+              ],
+            ),
+            SizedBox(height: 24),
+          ],
         ),
       ),
     );

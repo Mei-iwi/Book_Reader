@@ -1,5 +1,6 @@
 import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/auth_scroll_view.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
@@ -53,9 +54,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -63,50 +64,53 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     final isLoading = context.watch<AuthProvider>().isLoading;
 
     return Scaffold(
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            myBanner(urlBanner: Myimages.myBanner, text: 'Admin Login'),
-            const SizedBox(height: 70),
-            FormInput(
-              text: 'Admin Email',
-              icon: Icons.admin_panel_settings,
-              isPassword: false,
-              controller: _emailController,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 30),
-            FormInput(
-              text: 'Password',
-              icon: Icons.lock,
-              isPassword: true,
-              controller: _passwordController,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Password is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 40),
-            if (isLoading)
-              const CircularProgressIndicator()
-            else
-              buttonFull(text: 'Login as Admin', func: _login),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                Navigator.pushReplacementNamed(context, AppRoute.login);
-              },
-              child: const Text('Back to user login'),
-            ),
-          ],
+      resizeToAvoidBottomInset: true,
+      body: AuthScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              myBanner(urlBanner: Myimages.myBanner, text: 'Admin Login'),
+              const SizedBox(height: 44),
+              FormInput(
+                text: 'Admin Email',
+                icon: Icons.admin_panel_settings,
+                isPassword: false,
+                controller: _emailController,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Email is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              FormInput(
+                text: 'Password',
+                icon: Icons.lock,
+                isPassword: true,
+                controller: _passwordController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Password is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 32),
+              if (isLoading)
+                const CircularProgressIndicator()
+              else
+                buttonFull(text: 'Login as Admin', func: _login),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, AppRoute.login);
+                },
+                child: const Text('Back to user login'),
+              ),
+            ],
+          ),
         ),
       ),
     );

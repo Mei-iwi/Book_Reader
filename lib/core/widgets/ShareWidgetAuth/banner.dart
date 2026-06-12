@@ -3,9 +3,17 @@ import 'package:flutter/material.dart';
 Widget myBanner({required String urlBanner, required String text}) {
   return Builder(
     builder: (context) {
+      final mediaQuery = MediaQuery.of(context);
+      final screenHeight = mediaQuery.size.height;
+      final screenWidth = mediaQuery.size.width;
+      final keyboardVisible = mediaQuery.viewInsets.bottom > 0;
+      final bannerHeight = (screenHeight * (keyboardVisible ? 0.22 : 0.32))
+          .clamp(150.0, 280.0);
+      final titleSize = (screenWidth * 0.075).clamp(22.0, 30.0);
+
       return SizedBox(
         width: double.infinity,
-        height: MediaQuery.of(context).size.height * 0.4,
+        height: bannerHeight,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -90,9 +98,18 @@ Widget myBanner({required String urlBanner, required String text}) {
               ),
             ),
             Center(
-              child: Text(
-                text,
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w600),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],

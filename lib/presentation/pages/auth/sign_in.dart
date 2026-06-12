@@ -2,6 +2,7 @@ import 'package:book_reader/config/routes.dart';
 import 'package:book_reader/core/constants/my_images.dart';
 import 'package:book_reader/core/constants/my_text.dart';
 import 'package:book_reader/core/utils/validators.dart';
+import 'package:book_reader/core/widgets/ShareWidgetAuth/auth_scroll_view.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/banner.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/button_style.dart';
 import 'package:book_reader/core/widgets/ShareWidgetAuth/form.dart';
@@ -56,33 +57,34 @@ class _Signin extends State<Signin> {
     final isLoading = context.watch<AuthProvider>().isLoading;
 
     return Scaffold(
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            myBanner(urlBanner: Myimages.myBanner, text: Mytext.textSignIn),
-            const SizedBox(height: 70),
-            FormInput(
-              text: 'Phone or Email',
-              icon: Icons.mail,
-              isPassword: false,
-              controller: mail,
-              validator: AppValidators.emailOrPhone,
-            ),
-            const SizedBox(height: 30),
-            FormInput(
-              text: 'Password',
-              icon: Icons.lock,
-              isPassword: true,
-              controller: password,
-              validator: AppValidators.password,
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 80),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
+      resizeToAvoidBottomInset: true,
+      body: AuthScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              myBanner(urlBanner: Myimages.myBanner, text: Mytext.textSignIn),
+              const SizedBox(height: 44),
+              FormInput(
+                text: 'Phone or Email',
+                icon: Icons.mail,
+                isPassword: false,
+                controller: mail,
+                validator: AppValidators.emailOrPhone,
+              ),
+              const SizedBox(height: 24),
+              FormInput(
+                text: 'Password',
+                icon: Icons.lock,
+                isPassword: true,
+                controller: password,
+                validator: AppValidators.password,
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 24),
+                  child: TextButton(
                     onPressed: () {
                       Navigator.pushReplacementNamed(
                         context,
@@ -94,34 +96,35 @@ class _Signin extends State<Signin> {
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (isLoading)
+                const CircularProgressIndicator()
+              else
+                buttonFull(text: Mytext.textSignIn, func: _login),
+              const SizedBox(height: 24),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text(
+                    "Don't have a account?",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(context, AppRoute.signup);
+                    },
+                    child: const Text(
+                      'Sign up',
+                      style: TextStyle(color: Colors.blue),
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 30),
-            if (isLoading)
-              const CircularProgressIndicator()
-            else
-              buttonFull(text: Mytext.textSignIn, func: _login),
-            const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  "Don't have a account?",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, AppRoute.signup);
-                  },
-                  child: const Text(
-                    'Sign up',
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
