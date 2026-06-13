@@ -92,6 +92,7 @@ class _Reader extends State<Reader> {
   bool _webHasError = false;
   bool _isOpeningRemoteFile = false;
   bool _autoOpenedRemoteFile = false;
+  bool _forceOnlineReader = false;
   bool _isPdfLoaded = false;
   bool _isRestoringPdfPage = false;
   String? _webErrorMessage;
@@ -118,7 +119,9 @@ class _Reader extends State<Reader> {
   bool get _hasRemotePdf => _remotePdfLink.isNotEmpty;
   bool get _hasRemoteEpub => _remoteEpubLink.isNotEmpty;
   bool get _shouldUsePdfReader =>
-      !_hasTextContentSource && (_hasLocalPdfFile || _hasRemotePdf);
+      !_forceOnlineReader &&
+      !_hasTextContentSource &&
+      (_hasLocalPdfFile || _hasRemotePdf);
   bool get _usesExternalReader => _hasExternalLocalFile || _hasRemoteEpub;
 
   int get _currentTotalPage {
@@ -184,6 +187,7 @@ class _Reader extends State<Reader> {
   bool get _shouldUseWebView {
     final localPath = widget.localFilePath?.trim() ?? '';
 
+    if (_forceOnlineReader && _hasOnlineLink) return true;
     if (_hasLocalTextFile) return false;
     if (_shouldUsePdfReader) return false;
 
@@ -290,6 +294,49 @@ class _Reader extends State<Reader> {
         ),
       )
       ..loadRequest(Uri.parse(fixedUrl));
+  }
+
+  void _openOnlineLinkInApp() {
+    if (!_hasOnlineLink) return;
+
+    setState(() {
+      _forceOnlineReader = true;
+      _isPdfLoaded = false;
+      _isRestoringPdfPage = false;
+      _pdfErrorMessage = null;
+      _webHasError = false;
+      _webErrorMessage = null;
+      _webProgress = 0;
+    });
+
+    _initWebView();
+    unawaited(_loadSavedProgress());
+    unawaited(_saveProgress());
+  }
+
+  Widget _fallbackToOnlineReader({String? message}) {
+    if (!_hasOnlineLink) {
+      return _buildPdfError(
+        message ?? 'Khong the tai PDF va sach nay khong co link doc online.',
+      );
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_forceOnlineReader) {
+        _openOnlineLinkInApp();
+      }
+    });
+
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Dang mo ban doc online...'),
+        ],
+      ),
+    );
   }
 
   Future<String> _loadContent() async {
@@ -1116,6 +1163,7 @@ class _Reader extends State<Reader> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _openOnlineLinkExternal(String url) async {
     if (url.trim().isEmpty) return;
     final launched = await launchUrl(
@@ -1247,6 +1295,10 @@ class _Reader extends State<Reader> {
   void _onPdfDocumentLoadFailed(PdfDocumentLoadFailedDetails details) {
     if (!mounted) return;
     unawaited(_deleteActiveRemotePdfCache());
+    if (_hasOnlineLink) {
+      _openOnlineLinkInApp();
+      return;
+    }
     setState(() {
       _isPdfLoaded = false;
       _isRestoringPdfPage = false;
@@ -1272,7 +1324,7 @@ class _Reader extends State<Reader> {
         }
 
         if (snapshot.hasError) {
-          return _buildPdfError(snapshot.error.toString());
+          return _fallbackToOnlineReader(message: snapshot.error.toString());
         }
 
         final pdfPath = snapshot.data?.trim() ?? '';
@@ -1380,7 +1432,7 @@ class _Reader extends State<Reader> {
             ),
             if (_hasOnlineLink)
               TextButton(
-                onPressed: () => _openOnlineLinkExternal(_onlineLink),
+                onPressed: _openOnlineLinkInApp,
                 child: const Text('Mở bản đọc online'),
               ),
             if (_hasRemoteEpub)
@@ -1440,7 +1492,7 @@ class _Reader extends State<Reader> {
             if (_hasOnlineLink) ...[
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => _openOnlineLinkExternal(_onlineLink),
+                onPressed: _openOnlineLinkInApp,
                 child: const Text('Mở bản đọc online'),
               ),
             ],
@@ -1494,8 +1546,8 @@ class _Reader extends State<Reader> {
                   label: const Text('Mở EPUB'),
                 ),
               TextButton(
-                onPressed: () => _openOnlineLinkExternal(_onlineLink),
-                child: const Text('Mở bằng trình duyệt'),
+                onPressed: _openOnlineLinkInApp,
+                child: const Text('Mở lại trong app'),
               ),
               TextButton(
                 onPressed: _reloadWebView,
