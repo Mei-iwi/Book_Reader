@@ -94,6 +94,9 @@ class _Reader extends State<Reader> {
   bool _autoOpenedRemoteFile = false;
   bool _isPdfLoaded = false;
   bool _isRestoringPdfPage = false;
+  bool _hasSavedExitBookmark = false;
+  bool _usePdfWebFallback = false;
+  int? _lastSavedBookmarkPage;
   String? _webErrorMessage;
   String? _pdfErrorMessage;
   String _readingMode = 'light';
@@ -144,6 +147,11 @@ class _Reader extends State<Reader> {
   }
 
   String get _webViewUrl {
+    if (_usePdfWebFallback && _hasRemotePdf) {
+      final pdfUrl = _remotePdfLink.replaceFirst('http://', 'https://');
+      return 'https://docs.google.com/gview?embedded=1&url=${Uri.encodeComponent(pdfUrl)}';
+    }
+
     if (_hasOnlineLink) {
       return _onlineLink.replaceFirst('http://', 'https://');
     }
@@ -185,6 +193,7 @@ class _Reader extends State<Reader> {
     final localPath = widget.localFilePath?.trim() ?? '';
 
     if (_hasLocalTextFile) return false;
+    if (_usePdfWebFallback) return true;
     if (_shouldUsePdfReader) return false;
 
     // Uu tien doc online/PDF remote ngay trong app neu co link.
@@ -236,7 +245,7 @@ class _Reader extends State<Reader> {
   @override
   void dispose() {
     _progressSyncTimer?.cancel();
-    _saveProgress(syncNow: true);
+    unawaited(_saveExitState());
     _pageController.dispose();
     _pdfViewerController.dispose();
     super.dispose();
@@ -559,6 +568,7 @@ class _Reader extends State<Reader> {
       note: note,
       userId: widget.userId,
     );
+    _lastSavedBookmarkPage = page;
 
     final backendBookId = int.tryParse(bookId);
     final userId = widget.userId;
@@ -574,6 +584,23 @@ class _Reader extends State<Reader> {
     } catch (e) {
       debugPrint('SYNC BOOKMARK ERROR: $e');
     }
+  }
+
+  Future<void> _saveExitState() async {
+    await _saveExitBookmark();
+    await _saveProgress(syncNow: true);
+  }
+
+  Future<void> _saveExitBookmark() async {
+    final bookId = widget.bookId;
+    if (bookId == null || bookId.trim().isEmpty) return;
+    if (_hasSavedExitBookmark) return;
+    if (_shouldUseWebView || _usesExternalReader) return;
+    if (_shouldUsePdfReader && !_isPdfLoaded) return;
+    if (_lastSavedBookmarkPage == _safeCurrentPage) return;
+
+    _hasSavedExitBookmark = true;
+    await _saveBookmark();
   }
 
   Future<void> _saveBookmarkFromToolbar() async {
@@ -708,7 +735,7 @@ class _Reader extends State<Reader> {
           ),
         ),
         content: const Text(
-          'Ban co muon roi khoi trang hien tai? Neu muon luu dau trang, hay bam bieu tuong bookmark truoc khi roi trang.',
+          'Ban co muon roi khoi trang hien tai? App se tu luu moc trang hien tai truoc khi thoat.',
         ),
         actions: [
           TextButton(
@@ -738,7 +765,7 @@ class _Reader extends State<Reader> {
       },
     );
 
-    await _saveProgress(syncNow: true);
+    await _saveExitState();
 
     if (!parentContext.mounted) return;
     Navigator.of(parentContext, rootNavigator: true).pop();
@@ -970,42 +997,52 @@ class _Reader extends State<Reader> {
   Widget build(BuildContext context) {
     final totalPage = _currentTotalPage;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        leading: IconButton(
-          onPressed: _showExitDialog,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_outlined,
-            size: 30,
-            color: Colors.blue,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _showExitDialog();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        actions: [
-          if (_shouldUseWebView)
-            IconButton(
+          leading: IconButton(
+            onPressed: _showExitDialog,
+            icon: const Icon(
+              Icons.keyboard_arrow_down_outlined,
+              size: 30,
+              color: Colors.blue,
+            ),
+          ),
+          actions: [
+            if (_shouldUseWebView)
+              IconButton(
               tooltip: 'Quay lại trang trước',
               onPressed: _goBackWebView,
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.blue),
             ),
-          if (_shouldUseWebView)
-            IconButton(
+            if (_shouldUseWebView)
+              IconButton(
               tooltip: 'Tải lại',
               onPressed: _reloadWebView,
               icon: const Icon(Icons.refresh, color: Colors.blue),
             ),
-          if (_shouldUseWebView || _shouldUsePdfReader || _usesExternalReader)
-            IconButton(
+            if (_shouldUseWebView || _shouldUsePdfReader || _usesExternalReader)
+              IconButton(
               tooltip: 'Cap nhat trang doc',
               onPressed: _showProgressDialog,
               icon: const Icon(Icons.menu_book_outlined, color: Colors.blue),
             ),
-          IconButton(
+            IconButton(
             tooltip: 'Chế độ đọc',
             onPressed: _showReadingModeSheet,
             icon: const Icon(Icons.tune, color: Colors.blue),
           ),
-          IconButton(
+            IconButton(
             tooltip: 'Bình luận',
             onPressed: () {
               Navigator.push(
@@ -1020,29 +1057,30 @@ class _Reader extends State<Reader> {
             },
             icon: const Icon(Icons.comment, color: Colors.blue),
           ),
-          IconButton(
+            IconButton(
             tooltip: 'Lưu bookmark',
             onPressed: _saveBookmarkFromToolbar,
             icon: const Icon(Icons.bookmark_add_outlined, color: Colors.blue),
           ),
-          IconButton(
+            IconButton(
             tooltip: 'Danh sách bookmark',
             onPressed: _showBookmarksDialog,
             icon: const Icon(Icons.bookmarks_outlined, color: Colors.blue),
           ),
-          const SizedBox(width: 10),
-        ],
+            const SizedBox(width: 10),
+          ],
+        ),
+        body: _shouldUseWebView
+            ? _buildWebReader()
+            : _shouldUsePdfReader
+            ? _buildPdfReader()
+            : _hasRemoteEpub
+            ? _buildRemoteFileReader()
+            : _buildTextReader(),
+        bottomNavigationBar: (_shouldUseWebView || _usesExternalReader)
+            ? null
+            : _buildBottomPageNavigation(totalPage),
       ),
-      body: _shouldUseWebView
-          ? _buildWebReader()
-          : _shouldUsePdfReader
-          ? _buildPdfReader()
-          : _hasRemoteEpub
-          ? _buildRemoteFileReader()
-          : _buildTextReader(),
-      bottomNavigationBar: (_shouldUseWebView || _usesExternalReader)
-          ? null
-          : _buildBottomPageNavigation(totalPage),
     );
   }
 
@@ -1197,8 +1235,23 @@ class _Reader extends State<Reader> {
       _isPdfLoaded = false;
       _isRestoringPdfPage = false;
       _pdfErrorMessage = null;
+      _usePdfWebFallback = false;
       _pdfFilePathFuture = _resolvePdfFilePath();
     });
+  }
+
+  void _enablePdfWebFallback(Object error) {
+    if (!_hasRemotePdf || _usePdfWebFallback) return;
+
+    debugPrint('PDF FILE VIEWER FALLBACK: $error');
+    setState(() {
+      _isPdfLoaded = true;
+      _isRestoringPdfPage = false;
+      _pdfErrorMessage = null;
+      _usePdfWebFallback = true;
+    });
+    _initWebView();
+    unawaited(_saveProgress());
   }
 
   void _onPdfDocumentLoaded(PdfDocumentLoadedDetails details) {
@@ -1247,6 +1300,10 @@ class _Reader extends State<Reader> {
   void _onPdfDocumentLoadFailed(PdfDocumentLoadFailedDetails details) {
     if (!mounted) return;
     unawaited(_deleteActiveRemotePdfCache());
+    if (_hasRemotePdf) {
+      _enablePdfWebFallback(details.description);
+      return;
+    }
     setState(() {
       _isPdfLoaded = false;
       _isRestoringPdfPage = false;
@@ -1272,6 +1329,12 @@ class _Reader extends State<Reader> {
         }
 
         if (snapshot.hasError) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _enablePdfWebFallback(snapshot.error!);
+          });
+          if (_hasRemotePdf) {
+            return _buildPdfLoading(message: 'Dang mo PDF trong ung dung...');
+          }
           return _buildPdfError(snapshot.error.toString());
         }
 
@@ -1349,14 +1412,16 @@ class _Reader extends State<Reader> {
     }
   }
 
-  Widget _buildPdfLoading() {
+  Widget _buildPdfLoading({String? message}) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
-          Text(_hasLocalPdfFile ? 'Dang mo PDF...' : 'Dang tai PDF...'),
+          Text(
+            message ?? (_hasLocalPdfFile ? 'Dang mo PDF...' : 'Dang tai PDF...'),
+          ),
         ],
       ),
     );
